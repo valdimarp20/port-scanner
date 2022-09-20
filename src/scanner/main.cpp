@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        std::cout << "Usage: /scanner <ip address> <low port> <high port>" << std::endl;
+        std::cout << "Usage: ./scanner <ip address> <low port> <high port>" << std::endl;
         return 1;
     }
     char *ipAddress = argv[1];

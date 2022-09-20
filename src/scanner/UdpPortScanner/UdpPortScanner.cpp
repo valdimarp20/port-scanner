@@ -39,6 +39,7 @@ int UdpPortScanner::sendReceiveWithTries(int maxTries) {
     }
 
     if (bytesReceived >= 0) {
+        std::cout << "Received from " << client->getAddressPort() << " : " << buffer << std::endl;
         memset(buffer, 0, sizeof(buffer));
     }
     std::cout << "TRIED '" << tries << "' times for port " << client->getAddressPort() << std::endl;
