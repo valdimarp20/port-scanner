@@ -4,8 +4,10 @@
 #include "UdpClient/UdpClient.h"
 #include "UdpPortScanner/UdpPortScanner.h"
 
-int main(int argc, char *argv[]) {
-    if (argc < 3) {
+int main(int argc, char *argv[])
+{
+    if (argc < 3)
+    {
         std::cout << "Usage: /scanner <ip address> <low port> <high port>" << std::endl;
         return 1;
     }
@@ -16,9 +18,12 @@ int main(int argc, char *argv[]) {
     UdpClient client = UdpClient(ipAddress);
 
     // Set client receive timeout
-    try {
-        client.setReceiveTimeout(200);
-    } catch (SocketException &exception) {
+    try
+    {
+        client.setReceiveTimeout(300);
+    }
+    catch (SocketException &exception)
+    {
         std::cerr << exception.what() << std::endl;
         return 1;
     }
