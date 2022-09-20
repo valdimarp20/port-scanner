@@ -1,0 +1,8 @@
+Received from 4026 : Send me a message containing "$group_#$" where # is your group number.
+
+Received from 4064 : I am the oracle, send me a comma-seperated list of the hidden ports, and I shall show you the way.
+
+Received from 4072 : The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
+Send us a message containing your group number in the form "$group_#$" where # is your group number.
+
+Received from 4091 : My boss told me not to tell anyone that my secret port is 4099
