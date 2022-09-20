@@ -24,7 +24,7 @@ class UdpClient {
         virtual ~UdpClient();
         int getAddressPort();
         void setPort(int port);
-        void setReceiveTimeout(int seconds);
+        void setReceiveTimeout(int milliseconds);
         int receive(const void *buffer, int bufferSize);
         void send(const void *data, int dataSize);
 };

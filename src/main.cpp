@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 
     // Set client receive timeout
     try {
-        client.setReceiveTimeout(1);
+        client.setReceiveTimeout(200);
     } catch (SocketException &exception) {
         std::cerr << exception.what() << std::endl;
         return 1;

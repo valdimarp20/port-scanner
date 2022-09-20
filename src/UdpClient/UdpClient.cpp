@@ -40,13 +40,14 @@ void UdpClient::setPort(int port) {
     }
 }
 
-void UdpClient::setReceiveTimeout(int seconds) {
-    timeval time_val;
-    time_val.tv_sec = seconds;
-    time_val.tv_usec = 0;
+// https://stackoverflow.com/questions/977684/how-can-i-express-10-milliseconds-using-timeval
+void UdpClient::setReceiveTimeout(int milliseconds) {
+    timeval timeout;
+    timeout.tv_sec = milliseconds / 1000;
+    timeout.tv_usec = (milliseconds % 1000) * 1000;
 
     int isTimeoutSet =
-        setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (timeval *)&time_val, sizeof(timeval));
+        setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (timeval *)&timeout, sizeof(timeout));
     if (isTimeoutSet < 0) {
         throw SocketException("Failed to set socket receive timeout");
     }

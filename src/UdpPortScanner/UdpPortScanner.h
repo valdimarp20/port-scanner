@@ -14,6 +14,8 @@ class UdpPortScanner {
     private:
         UdpClient *client;
         std::vector<int> openPorts;
+        int sendReceiveWithTries(int maxTries);
+        bool scanPort(int port);
 
     public:
         UdpPortScanner(UdpClient *client);
