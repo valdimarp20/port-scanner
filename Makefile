@@ -17,8 +17,8 @@ UdpPortScanner.o: src/scanner/UdpPortScanner/UdpPortScanner.cpp
 	$(COMPILER) -c src/scanner/UdpPortScanner/UdpPortScanner.cpp $(FLAGS)
 
 
-puzzlesolver: UdpClient.o UdpPortScanner.o PuzzleSolver.o Solver.o
-	$(COMPILER) -o puzzlesolver UdpClient.o UdpPortScanner.o PuzzleSolver.o Solver.o $(FLAGS)
+puzzlesolver: RawSocketClient.o UdpClient.o UdpPortScanner.o PuzzleSolver.o Solver.o
+	$(COMPILER) -o puzzlesolver RawSocketClient.o UdpClient.o UdpPortScanner.o PuzzleSolver.o Solver.o $(FLAGS)
 
 Solver.o: src/solver/main.cpp
 	$(COMPILER) -c -o Solver.o src/solver/main.cpp $(FLAGS)

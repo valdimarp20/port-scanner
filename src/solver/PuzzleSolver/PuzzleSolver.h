@@ -8,13 +8,13 @@ class PuzzleSolver {
     private:
         UdpClient* udpClient;
         UdpPortScanner* udpPortScanner;
-        const char *ipAddress;
+        const char *destIpAddress;
         void setPortsScan();
 
     public:
         PuzzleSolver();
-        PuzzleSolver(const char *ipAddress);
-        PuzzleSolver(const char *ipAddress, int port1, int port2, int port3, int port4);
+        PuzzleSolver(const char *destIpAddress);
+        PuzzleSolver(const char *destIpAddress, int port1, int port2, int port3, int port4);
         virtual ~PuzzleSolver();
         void printPorts();
         void solvePuzzles();
