@@ -1,7 +1,7 @@
 #include "UdpPortScanner.h"
-#include <vector>
 
 #include <iostream>
+#include <vector>
 
 #include "../../shared/SocketException.h"
 
@@ -13,6 +13,10 @@ UdpPortScanner::UdpPortScanner(UdpClient *client) {
 }
 
 UdpPortScanner::~UdpPortScanner() {}
+
+UdpClient *UdpPortScanner::getUdpClient() {
+    return client;
+}
 
 void UdpPortScanner::displayOpenPorts() {
     if (openPorts.size() > 0) {

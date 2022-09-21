@@ -21,6 +21,7 @@ class UdpPortScanner {
         UdpPortScanner();
         UdpPortScanner(UdpClient *client);
         virtual ~UdpPortScanner();
+        UdpClient *getUdpClient();
         void displayOpenPorts();
         bool isPortOpen(int port);
         void scanPortRange(int lowPort, int highPort);

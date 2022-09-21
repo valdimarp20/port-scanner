@@ -6,17 +6,20 @@
 
 class PuzzleSolver {
     private:
-        UdpClient* udpClient;
-        UdpPortScanner* udpPortScanner;
+        // UdpClient *udpClient;
+        UdpPortScanner *udpPortScanner;
         const char *destIpAddress;
         void setPortsScan();
 
     public:
         PuzzleSolver();
-        PuzzleSolver(const char *destIpAddress);
-        PuzzleSolver(const char *destIpAddress, int port1, int port2, int port3, int port4);
+        PuzzleSolver(UdpPortScanner *udpPortScanner);
+        PuzzleSolver(const char *destIpAddress, UdpPortScanner *udpPortScanner);
+        PuzzleSolver(const char *destIpAddress, int port1, int port2, int port3, int port4,
+                     UdpPortScanner *udpPortScanner);
         virtual ~PuzzleSolver();
         void printPorts();
+        void solvePuzzleOne(int port);
         void solvePuzzles();
 };
 

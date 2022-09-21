@@ -32,6 +32,7 @@ class RawSocketClient {
     public:
         RawSocketClient(const char* destinationIpAddress);
         virtual ~RawSocketClient();
+        int getSocket();
         void createSocket();
         void setDestinationPort(int port);
         void createDatagramAndSend(const char* sourceIpAddress, const char* message);

@@ -52,7 +52,6 @@ void UdpClient::setReceiveTimeout(int milliseconds) {
     if (isTimeoutSet < 0) {
         throw SocketException("Failed to set socket receive timeout");
         // throw SocketException(strerror(errno));
-
     }
 }
 

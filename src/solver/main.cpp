@@ -12,24 +12,20 @@ int main(int argc, char* argv[]) {
         return 1;
         exit(1);
     }
-    PuzzleSolver* puzzleSolver;
-
+    PuzzleSolver puzzleSolver;
+    // dependencies
+    UdpClient client = UdpClient(argv[1]);
+    UdpPortScanner scanner = UdpPortScanner(&client);
     if (argc == 2) {
         // No ports were supplied via the user
-
         // Using the PuzzleSolver constructor with one argument, it solves the ports itself
-        puzzleSolver = new PuzzleSolver(argv[1]);
 
+        puzzleSolver = PuzzleSolver(&scanner);
     } else {
-        puzzleSolver =
-            new PuzzleSolver(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+        puzzleSolver = PuzzleSolver(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]),
+                                    atoi(argv[5]), &scanner);
     }
-
-    // RawSocketClient client = RawSocketClient(argv[1]);
-    // client.createSocket();
-    // client.setDestinationPort(4026);
-    // client.createDatagramAndSend("10.2.26.170", "$group_6$");
-    puzzleSolver->solvePuzzles();
+    puzzleSolver.solvePuzzles();
 
     return 0;
 }

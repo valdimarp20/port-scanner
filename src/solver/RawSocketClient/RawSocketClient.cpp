@@ -27,7 +27,7 @@ void RawSocketClient::createSocket() {
 
 // SOCKET
 void RawSocketClient::buildSocket() {
-    socket = ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+    socket = ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (socket < 0) {
         throw SocketException(strerror(errno));
     }
@@ -108,7 +108,7 @@ void RawSocketClient::createDatagramAndSend(const char *sourceIpAddress, const c
 
     // Data part
     data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
-    strcpy(data, "$group_6$");
+    strcpy(data, message);
 
     // some address resolution
     strcpy(source_ip, sourceIpAddress);
