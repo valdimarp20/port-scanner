@@ -19,6 +19,7 @@ class UdpClient {
         void setAddressPort();
 
     public:
+        UdpClient();
         UdpClient(const char *ipAddress);
         UdpClient(const char *ipAddress, int port);
         virtual ~UdpClient();

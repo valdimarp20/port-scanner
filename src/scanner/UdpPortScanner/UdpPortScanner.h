@@ -18,11 +18,13 @@ class UdpPortScanner {
         bool scanPort(int port);
 
     public:
+        UdpPortScanner();
         UdpPortScanner(UdpClient *client);
         virtual ~UdpPortScanner();
         void displayOpenPorts();
         bool isPortOpen(int port);
         void scanPortRange(int lowPort, int highPort);
+        std::vector<int> getOpenPorts();
 };
 
 #endif  // UDP_PORT_SCANNER_H

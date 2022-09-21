@@ -7,6 +7,8 @@
 
 #include "../../shared/SocketException.h"
 
+UdpClient::UdpClient() {}
+
 UdpClient::UdpClient(const char *ipAddress) {
     this->ipAddress = ipAddress;
     try {
@@ -49,6 +51,8 @@ void UdpClient::setReceiveTimeout(int milliseconds) {
         setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (timeval *)&timeout, sizeof(timeout));
     if (isTimeoutSet < 0) {
         throw SocketException("Failed to set socket receive timeout");
+        // throw SocketException(strerror(errno));
+
     }
 }
 

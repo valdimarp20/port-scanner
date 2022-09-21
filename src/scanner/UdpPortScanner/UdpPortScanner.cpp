@@ -1,10 +1,14 @@
 #include "UdpPortScanner.h"
+#include <vector>
 
 #include <iostream>
 
 #include "../../shared/SocketException.h"
 
+UdpPortScanner::UdpPortScanner() {}
+
 UdpPortScanner::UdpPortScanner(UdpClient *client) {
+    std::cout << "initializing udpportscanner" << std::endl;
     this->client = client;
 }
 
@@ -65,4 +69,8 @@ void UdpPortScanner::scanPortRange(int lowPort, int highPort) {
             openPorts.push_back(currentPort);
         }
     }
+}
+
+std::vector<int> UdpPortScanner::getOpenPorts() {
+    return this->openPorts;
 }
