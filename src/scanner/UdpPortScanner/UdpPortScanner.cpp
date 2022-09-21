@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../UdpClient/SocketException.h"
+#include "../../shared/SocketException.h"
 
 UdpPortScanner::UdpPortScanner(UdpClient *client) {
     this->client = client;

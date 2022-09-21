@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "UdpClient/SocketException.h"
+#include "../shared/SocketException.h"
 #include "UdpClient/UdpClient.h"
 #include "UdpPortScanner/UdpPortScanner.h"
 

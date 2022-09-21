@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "SocketException.h"
+#include "../../shared/SocketException.h"
 
 UdpClient::UdpClient(const char *ipAddress) {
     this->ipAddress = ipAddress;
