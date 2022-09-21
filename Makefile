@@ -3,8 +3,6 @@ FLAGS = -std=c++11
 
 all: scanner puzzlesolver
 
-puzzlesolver: RawSocketClient.o PuzzleSolver.o Solver.o
-	$(COMPILER) -o puzzlesolver  RawSocketClient.o PuzzleSolver.o Solver.o $(FLAGS)
 
 scanner: UdpClient.o UdpPortScanner.o Scanner.o
 	$(COMPILER) -o scanner UdpClient.o UdpPortScanner.o Scanner.o $(FLAGS)
