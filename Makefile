@@ -3,8 +3,8 @@ FLAGS = -std=c++11
 
 all: scanner puzzlesolver
 
-puzzlesolver: PuzzleSolver.o Solver.o
-	$(COMPILER) -o puzzlesolver PuzzleSolver.o Solver.o $(FLAGS)
+puzzlesolver: RawSocketClient.o PuzzleSolver.o Solver.o
+	$(COMPILER) -o puzzlesolver  RawSocketClient.o PuzzleSolver.o Solver.o $(FLAGS)
 
 scanner: UdpClient.o UdpPortScanner.o Scanner.o
 	$(COMPILER) -o scanner UdpClient.o UdpPortScanner.o Scanner.o $(FLAGS)
@@ -23,6 +23,9 @@ Solver.o: src/solver/main.cpp
 
 PuzzleSolver.o: src/solver/PuzzleSolver/PuzzleSolver.cpp
 	$(COMPILER) -c src/solver/PuzzleSolver/PuzzleSolver.cpp $(FLAGS)
+
+RawSocketClient.o: src/solver/RawSocketClient/RawSocketClient.cpp
+	$(COMPILER) -c src/solver/RawSocketClient/RawSocketClient.cpp $(FLAGS)
 
 clear:
 	rm -f *.o ./scanner ./puzzlesolver
