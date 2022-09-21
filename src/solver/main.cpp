@@ -3,14 +3,13 @@
 #include "PuzzleSolver/PuzzleSolver.h"
 
 int main(int argc, char *argv[]) {
-    if (argc < 2 || argc > 6) {
+    if (argc != 2 && argc != 6) {
         std::cout << "Usage: ./puzzlesolver <ip address>" << std::endl;
         std::cout << "Usage: ./puzzlesolver <ip address> <port1> <port2> <port3> <port4>"
                   << std::endl;
         return 1;
         exit(1);
     }
-    std::cout << "help .." << std::endl;
     PuzzleSolver puzzleSolver;
 
     if (argc == 2) {

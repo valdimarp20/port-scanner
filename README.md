@@ -15,3 +15,4 @@ Scans ports between ```<low port>``` and ```<high port>``` on ```<ip address>```
 
 
 ./scanner 130.208.242.120 4000 4100
+./puzzlesolver 130.208.242.120
