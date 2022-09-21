@@ -64,6 +64,7 @@ bool UdpPortScanner::scanPort(int port) {
 void UdpPortScanner::scanPortRange(int lowPort, int highPort) {
     std::cout << "Scanning ..." << std::endl;
 
+    openPorts.clear();
     for (int currentPort = lowPort; currentPort <= highPort; currentPort++) {
         if (isPortOpen(currentPort)) {
             openPorts.push_back(currentPort);
@@ -73,4 +74,8 @@ void UdpPortScanner::scanPortRange(int lowPort, int highPort) {
 
 std::vector<int> UdpPortScanner::getOpenPorts() {
     return this->openPorts;
+}
+
+void UdpPortScanner::setOpenPorts(std::vector<int> ports) {
+    this->openPorts = ports;
 }

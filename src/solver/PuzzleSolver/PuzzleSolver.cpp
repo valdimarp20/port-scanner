@@ -5,15 +5,12 @@
 
 #include "../../scanner/UdpClient/UdpClient.h"
 #include "../../shared/SocketException.h"
+#include "../RawSocketClient/RawSocketClient.h"
 
 PuzzleSolver::PuzzleSolver() {
     this->ipAddress = "";
     this->udpClient = new UdpClient();
     this->udpPortScanner = new UdpPortScanner();
-    this->port1 = 0;
-    this->port2 = 0;
-    this->port3 = 0;
-    this->port4 = 0;
 }
 
 void PuzzleSolver::setPortsScan() {
@@ -27,19 +24,16 @@ void PuzzleSolver::setPortsScan() {
     int lowPort = atoi("4000");
     int highPort = atoi("4100");
     udpPortScanner->scanPortRange(lowPort, highPort);
-    std::vector<int> openPorts = udpPortScanner->getOpenPorts();
 
-    if (openPorts.size() != 4) {
+
+
+    while (udpPortScanner->getOpenPorts().size() != 4) {
         // TODO: Create an exception here
         std::cout << "Something went wrong, didn't get all four ports!" << std::endl;
+        std::cout << "These ports are the open ports we found:" << std::endl;
+        udpPortScanner->displayOpenPorts();
+        udpPortScanner->scanPortRange(lowPort, highPort);
     }
-
-    // std::cout << "Amount of open ports: " << openPorts.size() << std::endl;
-
-    this->port1 = openPorts.at(0);
-    this->port2 = openPorts.at(1);
-    this->port3 = openPorts.at(2);
-    this->port4 = openPorts.at(3);
 }
 
 PuzzleSolver::PuzzleSolver(const char *ipAddress) {
@@ -55,10 +49,7 @@ PuzzleSolver::PuzzleSolver(const char *ipAddress, int port1, int port2, int port
     this->ipAddress = ipAddress;
     this->udpClient = new UdpClient(ipAddress);
     this->udpPortScanner = new UdpPortScanner(udpClient);
-    this->port1 = port1;
-    this->port2 = port2;
-    this->port3 = port3;
-    this->port4 = port4;
+    this->udpPortScanner->setOpenPorts({ port1, port2, port3, port4 });
 }
 
 PuzzleSolver::~PuzzleSolver() {
@@ -67,9 +58,30 @@ PuzzleSolver::~PuzzleSolver() {
 }
 
 void PuzzleSolver::printPorts() {
-    std::cout << port1 << " " << port2 << " " << port3 << " " << port4 << std::endl;
+    udpPortScanner->displayOpenPorts();
 }
 
 void PuzzleSolver::solvePuzzles() {
     // Go through the ports and send messages accordingly
+    /*
+    for (int i = 0; i < udpPortScanner->getOpenPorts().size(); ++i) {
+        std::cout << "Port " << udpPortScanner->getOpenPorts().at(i) << " is open." << std::endl;
+    int port = udpPortScanner->getOpenPorts().at(i);
+    }
+    */
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// Testing to send and listen for port 4026 which sould be the 0th open port           ///
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    // int listenUdpSocket, sendRawSocket;
+
+    int destinationPort = udpPortScanner->getOpenPorts().at(0);
+    RawSocketClient client = RawSocketClient(ipAddress);
+    client.createSocket();
+    client.setDestinationPort(destinationPort);
+    client.createDatagramAndSend("10.1.19.34", "$group_6$");
+
+
+
 }

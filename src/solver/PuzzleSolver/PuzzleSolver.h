@@ -9,10 +9,6 @@ class PuzzleSolver {
         UdpClient* udpClient;
         UdpPortScanner* udpPortScanner;
         const char *ipAddress;
-        int port1;
-        int port2;
-        int port3;
-        int port4;
         void setPortsScan();
 
     public:
