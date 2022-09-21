@@ -91,60 +91,64 @@ unsigned short RawSocketClient::calculateChecksum(unsigned short *buffer, int nu
 }
 
 void RawSocketClient::createDatagramAndSend(const char *sourceIpAddress, const char *message) {
-    // Packet buffer
-    char buffer[4096];
-    memset(buffer, 0, sizeof(buffer));
+    // Datagram to represent the packet
+    char datagram[4096], source_ip[32], *data, *pseudogram;
+
+    // zero out the packet buffer
+    memset(datagram, 0, 4096);
 
     // IP header
-    struct ip *ipHeader = (struct ip *)buffer;
+    struct ip *iph = (struct ip *)datagram;
 
     // UDP header
-    struct udphdr *udpHeader = (struct udphdr *)(buffer + sizeof(struct ip));
+    struct udphdr *udph = (struct udphdr *)(datagram + sizeof(struct ip));
+
+    struct sockaddr_in sin;
+    struct pseudo_header psh;
 
     // Data part
-    char *data;
-    data = buffer + sizeof(struct ip) + sizeof(struct udphdr);
-    strcpy(buffer, message);
+    data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
+    strcpy(data, "$group_6$");
+
+    // some address resolution
+    strcpy(source_ip, sourceIpAddress);
 
     // Fill in the IP Header
-    ipHeader->ip_hl = 5;
-    ipHeader->ip_v = 4;
-    ipHeader->ip_tos = 0;
-    ipHeader->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
-    ipHeader->ip_id = htons(54321);  // 54321
-    ipHeader->ip_off = 0;
-    ipHeader->ip_ttl = 64;
-    ipHeader->ip_p = IPPROTO_UDP;
-    ipHeader->ip_sum = 0;
-    inet_pton(AF_INET, sourceIpAddress, &ipHeader->ip_src.s_addr);  // Source address
-    ipHeader->ip_dst.s_addr = destinationAddress.sin_addr.s_addr;   // Set destination address
-    ipHeader->ip_sum =
-        calculateChecksum((unsigned short *)buffer, ipHeader->ip_len);  // Ip checksum
+    iph->ip_hl = 5;
+    iph->ip_v = 4;
+    iph->ip_tos = 0;
+    iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
+    iph->ip_id = htons(54321);  // 54321
+    iph->ip_off = 0;
+    iph->ip_ttl = 255;
+    iph->ip_p = IPPROTO_UDP;
+    iph->ip_sum = 0;
+    iph->ip_src.s_addr = inet_addr(source_ip);
+    iph->ip_dst.s_addr = destinationAddress.sin_addr.s_addr;
 
-    // Udp header
-    udpHeader->uh_sport = htons(55349);  // SOURCE PORT!
-    udpHeader->uh_dport = destinationAddress.sin_port;
-    udpHeader->uh_ulen = htons(sizeof(struct udphdr) + strlen(data));
-    udpHeader->uh_sum = 0;
+    // Ip checksum
+    iph->ip_sum = calculateChecksum((unsigned short *)datagram, iph->ip_len);
 
-    // Pseudo header
-    struct pseudo_header pseudoHeader;
-    char *pseudogram;
-    inet_pton(AF_INET, sourceIpAddress, &pseudoHeader.source_address);  // Source address
-    pseudoHeader.dest_address = destinationAddress.sin_addr.s_addr;
-    pseudoHeader.protocol = IPPROTO_UDP;
-    pseudoHeader.placeholder = 0;
-    pseudoHeader.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+    // UDP header
+    udph->uh_sport = htons(55349);
+    udph->uh_dport = htons(4026);
+    udph->uh_ulen = htons(8 + strlen(data));  // tcp header size
+    udph->uh_sum = 0;                         // leave checksum 0 now, filled later by pseudo header
 
-    int packetSize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
-    pseudogram = new char[packetSize];
+    // Now the UDP checksum using the pseudo header
+    psh.source_address = inet_addr(source_ip);
+    psh.dest_address = destinationAddress.sin_addr.s_addr;
+    psh.protocol = IPPROTO_UDP;
+    psh.placeholder = 0;
+    psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
 
-    memcpy(pseudogram, (char *)&pseudoHeader, sizeof(struct pseudo_header));
-    memcpy(pseudogram + sizeof(struct pseudo_header), udpHeader,
-           sizeof(struct udphdr) + strlen(data));
-    udpHeader->uh_sum = calculateChecksum((unsigned short *)pseudogram, packetSize);
+    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+    pseudogram = (char *)malloc(psize);
 
-    delete pseudogram;
-    sendto(socket, buffer, ipHeader->ip_len, 0, (struct sockaddr *)&destinationAddress,
+    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header), udph, sizeof(struct udphdr) + strlen(data));
+
+    udph->uh_sum = calculateChecksum((unsigned short *)pseudogram, psize);
+    sendto(socket, datagram, iph->ip_len, 0, (struct sockaddr *)&destinationAddress,
            destinationAddressSize);
 }

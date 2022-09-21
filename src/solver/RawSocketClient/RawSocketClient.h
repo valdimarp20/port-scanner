@@ -24,7 +24,6 @@ class RawSocketClient {
 
         void buildSocket();
         void setIncludeHeaderDataOption();
-
         void buildDestinationPort();
         void buildDestinationAddress();
 
