@@ -18,11 +18,11 @@ UdpClient.o: src/scanner/UdpClient/UdpClient.cpp
 UdpPortScanner.o: src/scanner/UdpPortScanner/UdpPortScanner.cpp
 	$(COMPILER) -c src/scanner/UdpPortScanner/UdpPortScanner.cpp $(FLAGS)
 
-Solver.o: src/puzzleSolver/main.cpp
-	$(COMPILER) -c -o Solver.o src/puzzleSolver/main.cpp $(FLAGS)
+Solver.o: src/solver/main.cpp
+	$(COMPILER) -c -o Solver.o src/solver/main.cpp $(FLAGS)
 
-PuzzleSolver.o: src/puzzleSolver/PuzzleSolver/PuzzleSolver.cpp
-	$(COMPILER) -c src/puzzleSolver/PuzzleSolver/PuzzleSolver.cpp $(FLAGS)
+PuzzleSolver.o: src/solver/PuzzleSolver/PuzzleSolver.cpp
+	$(COMPILER) -c src/solver/PuzzleSolver/PuzzleSolver.cpp $(FLAGS)
 
 clear:
 	rm -f *.o ./scanner ./puzzlesolver
