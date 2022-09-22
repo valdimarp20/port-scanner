@@ -74,6 +74,7 @@ PuzzleSolver::PuzzleSolver(const char *destIpAddress, int port1, int port2, int 
     this->destIpAddress = destIpAddress;
     this->udpPortScanner = udpPortScanner;
     this->udpPortScanner->setOpenPorts({port1, port2, port3, port4});
+    scanAndSetPorts();
 }
 
 PuzzleSolver::~PuzzleSolver() {}
@@ -85,7 +86,6 @@ void PuzzleSolver::scanAndSetPorts() {
         std::cerr << exception.what() << std::endl;
         exit(1);
     }
-
     int lowPort = 4000;
     int highPort = 4100;
 
@@ -93,9 +93,9 @@ void PuzzleSolver::scanAndSetPorts() {
     int maxTries = 5;
     bool unableToGetResponse = false;
 
-    udpPortScanner->scanPortRange(lowPort, highPort);
-
     if (udpPortScanner->getOpenPorts().size() != 4) {
+        udpPortScanner->scanPortRange(lowPort, highPort);
+
         while (udpPortScanner->getOpenPorts().size() != 4) {
             std::cout << "Something went wrong, didn't get all four ports!" << std::endl;
             std::cout << "These ports are the open ports we found:" << std::endl;
@@ -107,6 +107,9 @@ void PuzzleSolver::scanAndSetPorts() {
         char buffer[MAX_BUFFER];
 
         for (int port : udpPortScanner->getOpenPorts()) {
+            if (port < lowPort || port > highPort) {
+                continue;
+            }
             PortMessagePair portMessagePair = scanAndGetPortMessagePair(port);
             if (portMessagePair.port != -1) {
                 portMessagePairs.push_back(portMessagePair);
