@@ -1,11 +1,13 @@
 #include "PuzzleSolver.h"
 
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+
 #include <iostream>
 #include <vector>
 
 #include "../../scanner/UdpClient/UdpClient.h"
 #include "../../shared/SocketException.h"
-#include "../RawSocketClient/RawSocketClient.h"
 
 #define MAX_BUFFER 4096
 
@@ -32,25 +34,22 @@ unsigned short checkSum(unsigned short *ptr, int nbytes) {
     return (answer);
 }
 
-
 void hexdump(void *ptr, int buflen) {
-    unsigned char *buf = (unsigned char*)ptr;
+    unsigned char *buf = (unsigned char *)ptr;
     int i, j;
-    for (i=0; i<buflen; i+=16) {
+    for (i = 0; i < buflen; i += 16) {
         printf("%06x: ", i);
-        for (j=0; j<16; j++)
-            if (i+j < buflen)
-                printf("%02x ", buf[i+j]);
+        for (j = 0; j < 16; j++)
+            if (i + j < buflen)
+                printf("%02x ", buf[i + j]);
             else
                 printf("   ");
         printf(" ");
-        for (j=0; j<16; j++)
-            if (i+j < buflen)
-                printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
+        for (j = 0; j < 16; j++)
+            if (i + j < buflen) printf("%c", isprint(buf[i + j]) ? buf[i + j] : '.');
         printf("\n");
     }
 }
-
 
 PuzzleSolver::PuzzleSolver() {
     this->destIpAddress = "";
@@ -102,7 +101,6 @@ void PuzzleSolver::printPorts() {
 }
 
 void PuzzleSolver::solvePuzzleOne() {
-
     // Send a string "$group_6$" to the port and get more instructions
 
     std::string data0 = "$group_6$";
@@ -120,7 +118,8 @@ void PuzzleSolver::solvePuzzleOne() {
             unableToGetResponse = true;
             break;
         }
-        std::cout << "Trying to get a response from port " << destinationPort << " (tries: " << tries << ")..." << std::endl;
+        std::cout << "Trying to get a response from port " << destinationPort
+                  << " (tries: " << tries << ")..." << std::endl;
         udpPortScanner->getUdpClient()->send(data0.c_str(), data0.size());
         bytesReceived = udpPortScanner->getUdpClient()->receive(responseMessageBuffer, MAX_BUFFER);
         tries++;
@@ -131,7 +130,8 @@ void PuzzleSolver::solvePuzzleOne() {
         return;
     }
 
-    std::cout << "Port " << destinationPort << " responded with the following message:" << std::endl;
+    std::cout << "Port " << destinationPort
+              << " responded with the following message:" << std::endl;
     std::cout << responseMessageBuffer << std::endl;
 
     std::cout << "Setting up an appropriate response..." << destinationPort << "..." << std::endl;
@@ -153,10 +153,10 @@ void PuzzleSolver::solvePuzzleOne() {
     memset(datagram, 0, 4096);
 
     // IP header
-    struct ip *iph = (struct ip *) datagram;
+    struct ip *iph = (struct ip *)datagram;
 
     // UDP header
-    struct udphdr *uhdr = (struct udphdr *) (datagram + sizeof(struct ip));
+    struct udphdr *uhdr = (struct udphdr *)(datagram + sizeof(struct ip));
 
     struct sockaddr_in sin;
     struct pseudo_header psh;
@@ -187,14 +187,14 @@ void PuzzleSolver::solvePuzzleOne() {
 
     // Checksum
 
-    iph->ip_sum = checkSum((unsigned short *) datagram, iph->ip_len);
+    iph->ip_sum = checkSum((unsigned short *)datagram, iph->ip_len);
 
     // UDP header
 
-    uhdr->uh_sport = htons (65255);
-    uhdr->uh_dport = htons (htons(udpPortScanner->getUdpClient()->getAddressPort()));
+    uhdr->uh_sport = htons(65255);
+    uhdr->uh_dport = htons(htons(udpPortScanner->getUdpClient()->getAddressPort()));
     uhdr->uh_ulen = htons(sizeof(struct udphdr) + strlen(data1));
-    uhdr->uh_sum = 0;	//leave checksum 0 now, filled later by pseudo header
+    uhdr->uh_sum = 0;  // leave checksum 0 now, filled later by pseudo header
 
     psh.source_address = iph->ip_src.s_addr;
     psh.dest_address = iph->ip_dst.s_addr;
@@ -205,16 +205,15 @@ void PuzzleSolver::solvePuzzleOne() {
     int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data1);
     pseudogram = (char *)(malloc(psize));
 
-    memcpy(pseudogram, (char *) &psh, sizeof(struct pseudo_header));
-    memcpy(pseudogram + sizeof(struct pseudo_header),uhdr,sizeof(struct udphdr) + strlen(data1));
+    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header), uhdr, sizeof(struct udphdr) + strlen(data1));
 
-    uhdr->uh_sum = checkSum( (unsigned short*) pseudogram , psize);
+    uhdr->uh_sum = checkSum((unsigned short *)pseudogram, psize);
 
-    //IP_HDRINCL to tell the kernel that headers are included in the packet
+    // IP_HDRINCL to tell the kernel that headers are included in the packet
     int one = 1;
     const int *val = &one;
-    if (setsockopt (rawSendSocket, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
-    {
+    if (setsockopt(rawSendSocket, IPPROTO_IP, IP_HDRINCL, val, sizeof(one)) < 0) {
         std::cout << "Error setting IP_HDRINCL" << std::endl;
         exit(1);
     }
@@ -232,32 +231,24 @@ void PuzzleSolver::solvePuzzleOne() {
             unableToGetResponse1 = true;
             break;
         }
-        std::cout << "Trying to get a response from port " << destinationPort << " via raw packet (tries: " << tries1 << ")..." << std::endl;
+        std::cout << "Trying to get a response from port " << destinationPort
+                  << " via raw packet (tries: " << tries1 << ")..." << std::endl;
 
-
-        sendto (rawSendSocket, datagram, iph->ip_len , 0, (struct sockaddr *) &sin, sizeof (sin));
+        sendto(rawSendSocket, datagram, iph->ip_len, 0, (struct sockaddr *)&sin, sizeof(sin));
 
         bytesReceived1 = udpPortScanner->getUdpClient()->receive(responseMessageBuffer, MAX_BUFFER);
         tries1++;
     }
 
     if (unableToGetResponse1) {
-        std::cout << "Unable to recieve whilst sending a raw udp packet via port " << destinationPort << "..." << std::endl;
+        std::cout << "Unable to recieve whilst sending a raw udp packet via port "
+                  << destinationPort << "..." << std::endl;
         return;
     }
 
-    std::cout << "--- Port " << destinationPort << " responded with the following message:" << std::endl;
+    std::cout << "--- Port " << destinationPort
+              << " responded with the following message:" << std::endl;
     std::cout << responseMessageBuffer << std::endl;
-
-
-
-
-
-
-
-
-
-
 
     /*
     RawSocketClient client = RawSocketClient(destIpAddress);
@@ -369,7 +360,8 @@ void PuzzleSolver::solvePuzzleOne() {
     }
 
     // send the packet
-    if (sendto (rawSendSocket, datagram, iph->ip_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+    if (sendto (rawSendSocket, datagram, iph->ip_len , 0, (struct sockaddr *) &sin, sizeof (sin)) <
+    0)
     {
         perror("sendto failed");
     }
@@ -444,11 +436,9 @@ void PuzzleSolver::solvePuzzleOne() {
     std::cout << "Bytes received:" << std::endl;
     std::cout << bytesReceived << std::endl;
     */
-
 }
 
 void PuzzleSolver::solvePuzzles() {
-
     // Go through the ports and send messages accordingly
     // TODO: Fixa villu þegar portin eru núll: sudo ./puzzlesolver 130.208.242.120 0 0 0 0
     for (int i = 0; i < udpPortScanner->getOpenPorts().size(); ++i) {
@@ -458,7 +448,8 @@ void PuzzleSolver::solvePuzzles() {
         udpPortScanner->getUdpClient()->setPort(udpPortScanner->getOpenPorts().at(i));
         int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
         std::string destinationAddress = udpPortScanner->getUdpClient()->getAddress();
-        std::cout << "Solving for " << destinationAddress << ":" << destinationPort << "..." << std::endl;
+        std::cout << "Solving for " << destinationAddress << ":" << destinationPort << "..."
+                  << std::endl;
 
         udpPortScanner->getUdpClient()->setReceiveTimeout(500);
 
@@ -473,7 +464,8 @@ void PuzzleSolver::solvePuzzles() {
                 break;
             }
 
-            std::cout << "Trying to get a response from port " << destinationPort << " (tries: " << tries << ")..." << std::endl;
+            std::cout << "Trying to get a response from port " << destinationPort
+                      << " (tries: " << tries << ")..." << std::endl;
             memset(messageBuffer, 0, sizeof(messageBuffer));
             udpPortScanner->getUdpClient()->send(NULL, 0);
             bytesReceived = udpPortScanner->getUdpClient()->receive(messageBuffer, MAX_BUFFER);
@@ -485,27 +477,27 @@ void PuzzleSolver::solvePuzzles() {
             continue;
         }
 
-        std::cout << "Port " << destinationPort << " responded with the following message:" << std::endl;
+        std::cout << "Port " << destinationPort
+                  << " responded with the following message:" << std::endl;
         std::cout << messageBuffer << std::endl;
 
-        std::cout << "Determining which phase is applicable for port " << destinationPort << "..." << std::endl;
+        std::cout << "Determining which phase is applicable for port " << destinationPort << "..."
+                  << std::endl;
 
         std::string message = std::string(messageBuffer);
 
         if (message.find("Send me a message") != std::string::npos) {
             std::cout << "Port " << destinationPort << " is the x phase" << std::endl;
             solvePuzzleOne();
-        } else if (message.find("I am the oracle")!= std::string::npos) {
+        } else if (message.find("I am the oracle") != std::string::npos) {
             std::cout << "Port " << destinationPort << " is the y phase" << std::endl;
-        } else if (message.find("The dark side")!= std::string::npos) {
+        } else if (message.find("The dark side") != std::string::npos) {
             std::cout << "Port " << destinationPort << " is the evil bit phase" << std::endl;
-        } else if (message.find("My boss")!= std::string::npos) {
+        } else if (message.find("My boss") != std::string::npos) {
             std::cout << "Port " << destinationPort << " is the z phase" << std::endl;
         } else {
             std::cout << "Port " << destinationPort << " is the an unknown phase..." << std::endl;
         }
-
-
     }
 
     // solvePuzzleOne(udpPortScanner->getOpenPorts().at(0));

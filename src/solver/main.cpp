@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "PuzzleSolver/PuzzleSolver.h"
-#include "RawSocketClient/RawSocketClient.h"
 
 int main(int argc, char* argv[]) {
     // Check if the desired ports are given or not
