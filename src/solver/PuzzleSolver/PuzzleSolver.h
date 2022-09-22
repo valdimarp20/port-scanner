@@ -37,7 +37,7 @@ class PuzzleSolver {
         virtual ~PuzzleSolver();
         void printPuzzlePorts();
         void printPorts();
-        void solvePuzzleOne();
+        void solvePuzzleOne(PortMessagePair messagePair);
         void solvePuzzles();
         void test();
 };

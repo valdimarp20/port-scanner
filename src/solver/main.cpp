@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
                                     atoi(argv[5]), &scanner);
     }
     puzzleSolver.printPuzzlePorts();
-    // puzzleSolver.solvePuzzles();
+    puzzleSolver.solvePuzzles();
 
     return 0;
 }
