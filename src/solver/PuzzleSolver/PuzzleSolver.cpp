@@ -445,9 +445,11 @@ void PuzzleSolver::solvePuzzles() {
         std::cout << std::endl;
         char messageBuffer[MAX_BUFFER];
         memset(messageBuffer, 0, sizeof(messageBuffer));
+
         udpPortScanner->getUdpClient()->setPort(udpPortScanner->getOpenPorts().at(i));
         int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
         std::string destinationAddress = udpPortScanner->getUdpClient()->getAddress();
+
         std::cout << "Solving for " << destinationAddress << ":" << destinationPort << "..."
                   << std::endl;
 
