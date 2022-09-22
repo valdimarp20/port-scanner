@@ -9,16 +9,12 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage: ./puzzlesolver <ip address> <port1> <port2> <port3> <port4>"
                   << std::endl;
         return 1;
-        exit(1);
     }
     PuzzleSolver puzzleSolver;
-    // dependencies
     UdpClient client = UdpClient(argv[1]);
     UdpPortScanner scanner = UdpPortScanner(&client);
-    if (argc == 2) {
-        // No ports were supplied via the user
-        // Using the PuzzleSolver constructor with one argument, it solves the ports itself
 
+    if (argc == 2) {
         puzzleSolver = PuzzleSolver(argv[1], &scanner);
     } else {
         puzzleSolver = PuzzleSolver(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]),

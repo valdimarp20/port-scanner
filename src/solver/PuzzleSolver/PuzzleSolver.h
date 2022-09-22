@@ -1,8 +1,12 @@
 #ifndef PUZZLESOLVER_H
 #define PUZZLESOLVER_H
 
+#include <string>
+#include <vector>
+
 #include "../../scanner/UdpClient/UdpClient.h"
 #include "../../scanner/UdpPortScanner/UdpPortScanner.h"
+#include "../../shared/PortMessagePair.h"
 
 struct pseudo_header {
         u_int32_t source_address;
@@ -14,10 +18,11 @@ struct pseudo_header {
 
 class PuzzleSolver {
     private:
-        // UdpClient *udpClient;
+        std::string groupMessage = "$group_6$";
         UdpPortScanner *udpPortScanner;
         const char *destIpAddress;
-        void setPortsScan();
+        std::vector<PortMessagePair> portMessagePairs;
+        void scanAndSetPorts();
 
     public:
         PuzzleSolver();
