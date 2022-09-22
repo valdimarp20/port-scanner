@@ -60,7 +60,7 @@ bool UdpPortScanner::isPortOpen(int port) {
 
 bool UdpPortScanner::scanPort(int port) {
     client->setPort(port);
-    int bytesReceived = sendReceiveWithTries(3);
+    int bytesReceived = sendReceiveWithTries(10);
 
     return bytesReceived >= 0;
 }

@@ -37,6 +37,7 @@ class PuzzleSolver {
         void printPorts();
         void solvePuzzleOne();
         void solvePuzzles();
+        void test();
 };
 
 #endif  // PUZZLESOLVER_H
