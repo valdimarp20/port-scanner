@@ -136,7 +136,7 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
             std::cout << exception.what() << std::endl;
         }
         bytesReceived = udpPortScanner->getUdpClient()->receive(buffer, MAX_BUFFER);
-        // tries++;
+        tries++;
     }
 
     if (bytesReceived > 0 && udpPortScanner->getUdpClient()->getAddressPort() == port) {
