@@ -105,12 +105,6 @@ void PuzzleSolver::scanAndSetPorts() {
             udpPortScanner->scanPortRange(lowPort, highPort);
         }
     } else {
-<<<<<<< HEAD
-=======
-        udpPortScanner->getUdpClient()->setReceiveTimeout(10);
->>>>>>> dcbf4a8 (Raw socket baby doll)
-        char buffer[MAX_BUFFER];
-
         for (int port : udpPortScanner->getOpenPorts()) {
             if (port < lowPort || port > highPort) {
                 continue;
