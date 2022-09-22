@@ -102,16 +102,162 @@ void PuzzleSolver::printPorts() {
 }
 
 void PuzzleSolver::solvePuzzleOne() {
+
+    // Send a string "$group_6$" to the port and get more instructions
+
+    std::string data0 = "$group_6$";
+    char responseMessageBuffer[MAX_BUFFER];
+    int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
+
+    int bytesReceived = -1;
+    int tries = 1;
+    int maxTries = 5;
+    bool unableToGetResponse = false;
+
+    while (bytesReceived < 0) {
+        memset(responseMessageBuffer, 0, sizeof(responseMessageBuffer));
+        if (tries >= maxTries) {
+            unableToGetResponse = true;
+            break;
+        }
+        std::cout << "Trying to get a response from port " << destinationPort << " (tries: " << tries << ")..." << std::endl;
+        udpPortScanner->getUdpClient()->send(data0.c_str(), data0.size());
+        bytesReceived = udpPortScanner->getUdpClient()->receive(responseMessageBuffer, MAX_BUFFER);
+        tries++;
+    }
+
+    if (unableToGetResponse) {
+        std::cout << "Unable to reach port " << destinationPort << "..." << std::endl;
+        return;
+    }
+
+    std::cout << "Port " << destinationPort << " responded with the following message:" << std::endl;
+    std::cout << responseMessageBuffer << std::endl;
+
+    std::cout << "Setting up an appropriate response..." << destinationPort << "..." << std::endl;
+
     /*
-    std::string message = "$group_6$";
-    char buffer[MAX_BUFFER];
+     * Raw socket setup and receive
+     */
 
-    UdpClient client1 = UdpClient(destIpAddress, port);
+    /// Create a raw socket to send with
 
-    client1.send(message.c_str(), message.size());
-    client1.receive(buffer, MAX_BUFFER);
+    int rawSendSocket;
+    if ((rawSendSocket = socket(AF_INET, SOCK_RAW, IPPROTO_UDP)) < 0) {
+        std::cout << "Failed to create socket" << std::endl;
+        exit(1);
+    }
 
-    std::cout << buffer << std::endl;
+    char datagram[4096], *data1, *pseudogram;
+
+    memset(datagram, 0, 4096);
+
+    // IP header
+    struct ip *iph = (struct ip *) datagram;
+
+    // UDP header
+    struct udphdr *uhdr = (struct udphdr *) (datagram + sizeof(struct ip));
+
+    struct sockaddr_in sin;
+    struct pseudo_header psh;
+
+    // Data
+    data1 = (datagram + sizeof(struct ip)) + sizeof(struct udphdr);
+    strcpy(data1, "[udp packet with all the stuff i need to do]");
+
+    // Address resolution
+
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(udpPortScanner->getUdpClient()->getAddressPort());
+    sin.sin_addr.s_addr = inet_addr(udpPortScanner->getUdpClient()->getAddress().c_str());
+
+    // Fill the IP header
+
+    iph->ip_hl = 5;
+    iph->ip_v = 4;
+    iph->ip_tos = 0;
+    iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data1);
+    iph->ip_id = htonl(54321);
+    iph->ip_off = 0;
+    iph->ip_ttl = 255;
+    iph->ip_p = IPPROTO_UDP;
+    iph->ip_sum = 0;
+    iph->ip_src.s_addr = INADDR_ANY;
+    iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+
+    // Checksum
+
+    iph->ip_sum = checkSum((unsigned short *) datagram, iph->ip_len);
+
+    // UDP header
+
+    uhdr->uh_sport = htons (65255);
+    uhdr->uh_dport = htons (htons(udpPortScanner->getUdpClient()->getAddressPort()));
+    uhdr->uh_ulen = htons(sizeof(struct udphdr) + strlen(data1));
+    uhdr->uh_sum = 0;	//leave checksum 0 now, filled later by pseudo header
+
+    psh.source_address = iph->ip_src.s_addr;
+    psh.dest_address = iph->ip_dst.s_addr;
+    psh.placeholder = 0;
+    psh.protocol = IPPROTO_UDP;
+    psh.udp_length = htons(sizeof(struct udphdr) + strlen(data1));
+
+    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data1);
+    pseudogram = (char *)(malloc(psize));
+
+    memcpy(pseudogram, (char *) &psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header),uhdr,sizeof(struct udphdr) + strlen(data1));
+
+    uhdr->uh_sum = checkSum( (unsigned short*) pseudogram , psize);
+
+    //IP_HDRINCL to tell the kernel that headers are included in the packet
+    int one = 1;
+    const int *val = &one;
+    if (setsockopt (rawSendSocket, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
+    {
+        std::cout << "Error setting IP_HDRINCL" << std::endl;
+        exit(1);
+    }
+
+    int bytesReceived1 = -1;
+    int tries1 = 1;
+    int maxTries1 = 5;
+    bool unableToGetResponse1 = false;
+
+    udpPortScanner->getUdpClient()->setPort(6969);
+
+    while (bytesReceived1 < 0) {
+        memset(responseMessageBuffer, 0, sizeof(responseMessageBuffer));
+        if (tries1 >= maxTries1) {
+            unableToGetResponse1 = true;
+            break;
+        }
+        std::cout << "Trying to get a response from port " << destinationPort << " via raw packet (tries: " << tries1 << ")..." << std::endl;
+
+
+        sendto (rawSendSocket, datagram, iph->ip_len , 0, (struct sockaddr *) &sin, sizeof (sin));
+
+        bytesReceived1 = udpPortScanner->getUdpClient()->receive(responseMessageBuffer, MAX_BUFFER);
+        tries1++;
+    }
+
+    if (unableToGetResponse1) {
+        std::cout << "Unable to recieve whilst sending a raw udp packet via port " << destinationPort << "..." << std::endl;
+        return;
+    }
+
+    std::cout << "--- Port " << destinationPort << " responded with the following message:" << std::endl;
+    std::cout << responseMessageBuffer << std::endl;
+
+
+
+
+
+
+
+
+
+
 
     /*
     RawSocketClient client = RawSocketClient(destIpAddress);
@@ -126,7 +272,7 @@ void PuzzleSolver::solvePuzzleOne() {
 
     ///////// CREATE RAW SOCKET AND SEND //////
 
-
+    /*
     int rawSendSocket = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
 
     if(rawSendSocket == -1)
@@ -168,7 +314,7 @@ void PuzzleSolver::solvePuzzleOne() {
     sin.sin_addr.s_addr = inet_addr ("130.208.242.120");
 
 
-    /* Fill the IP header */
+    // Fill the IP header
     iph->ip_hl = 5;   // version
     iph->ip_v = 4;
     iph->ip_tos = 0;
@@ -192,7 +338,7 @@ void PuzzleSolver::solvePuzzleOne() {
     uhdr->uh_sum = 0;	//leave checksum 0 now, filled later by pseudo header
 
 
-    /* Now the UDP checksum */
+    // Now the UDP checksum
     psh.source_address = inet_addr( source_ip );
     psh.dest_address = sin.sin_addr.s_addr;
     psh.placeholder = 0;
@@ -273,7 +419,7 @@ void PuzzleSolver::solvePuzzleOne() {
         printf("\n-- closed send socket --\n\n");
 
     }
-
+    */
 
     //////// DONE DOING RAW SOCKET //////
 
@@ -329,7 +475,7 @@ void PuzzleSolver::solvePuzzles() {
 
             std::cout << "Trying to get a response from port " << destinationPort << " (tries: " << tries << ")..." << std::endl;
             memset(messageBuffer, 0, sizeof(messageBuffer));
-            udpPortScanner->getUdpClient()->send(0, NULL);
+            udpPortScanner->getUdpClient()->send(NULL, 0);
             bytesReceived = udpPortScanner->getUdpClient()->receive(messageBuffer, MAX_BUFFER);
             tries++;
         }
