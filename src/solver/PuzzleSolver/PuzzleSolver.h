@@ -22,7 +22,9 @@ class PuzzleSolver {
         UdpPortScanner *udpPortScanner;
         const char *destIpAddress;
         std::vector<PortMessagePair> portMessagePairs;
+
         void scanAndSetPorts();
+        PortMessagePair scanAndGetPortMessagePair(int port);
 
     public:
         PuzzleSolver();
@@ -31,6 +33,7 @@ class PuzzleSolver {
         PuzzleSolver(const char *destIpAddress, int port1, int port2, int port3, int port4,
                      UdpPortScanner *udpPortScanner);
         virtual ~PuzzleSolver();
+        void printPuzzlePorts();
         void printPorts();
         void solvePuzzleOne();
         void solvePuzzles();

@@ -88,7 +88,7 @@ void PuzzleSolver::scanAndSetPorts() {
 
     int lowPort = 4000;
     int highPort = 4100;
-    int bytesReceived;
+
     int tries = 1;
     int maxTries = 5;
     bool unableToGetResponse = false;
@@ -104,33 +104,43 @@ void PuzzleSolver::scanAndSetPorts() {
             udpPortScanner->scanPortRange(lowPort, highPort);
         }
     } else {
-        udpPortScanner->getUdpClient()->setReceiveTimeout(1000);
         char buffer[MAX_BUFFER];
 
         for (int port : udpPortScanner->getOpenPorts()) {
-            udpPortScanner->getUdpClient()->setPort(port);
-            bytesReceived = -1;
-
-            while (bytesReceived < 0) {
-                if (tries >= maxTries) {
-                    break;
-                }
-                udpPortScanner->getUdpClient()->send(NULL, 0);
-                bytesReceived = udpPortScanner->getUdpClient()->receive(buffer, MAX_BUFFER);
-
-                if (bytesReceived > 0) {
-                    // Create message pair, when data is available
-                    PortMessagePair portMessagePair;
-                    portMessagePair.port = port;
-                    portMessagePair.message = buffer;
-
-                    portMessagePairs.push_back(portMessagePair);
-                    memset(buffer, 0, sizeof(buffer));
-                }
-                tries++;
+            PortMessagePair portMessagePair = scanAndGetPortMessagePair(port);
+            if (portMessagePair.port != -1) {
+                portMessagePairs.push_back(portMessagePair);
             }
         }
     }
+}
+
+PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
+    char buffer[MAX_BUFFER];
+    memset(buffer, 0, sizeof(buffer));
+
+    PortMessagePair portMessagePair;
+    portMessagePair.port = -1;
+    portMessagePair.message = "";
+
+    int maxTries = 5, tries = 0, bytesReceived = -1;
+
+    udpPortScanner->getUdpClient()->setPort(port);
+
+    while (tries < maxTries && bytesReceived < 0) {
+        try {
+            udpPortScanner->getUdpClient()->send(NULL, 0);
+        } catch (SocketException &exception) {
+            std::cout << exception.what() << std::endl;
+        }
+        bytesReceived = udpPortScanner->getUdpClient()->receive(buffer, MAX_BUFFER);
+    }
+
+    if (bytesReceived > 0 && udpPortScanner->getUdpClient()->getAddressPort() == port) {
+        portMessagePair.port = port;
+        portMessagePair.message = buffer;
+    }
+    return portMessagePair;
 }
 
 void PuzzleSolver::printPorts() {
@@ -277,10 +287,28 @@ void PuzzleSolver::solvePuzzleOne() {
     std::cout << responseMessageBuffer << std::endl;
 }
 
+void PuzzleSolver::printPuzzlePorts() {
+    std::cout << "--------------------------------" << std::endl;
+    for (PortMessagePair &puzzle : portMessagePairs) {
+        if (puzzle.message.find("containing") != std::string::npos) {
+            std::cout << "Checksum port:\t" << puzzle.port << std::endl;
+        } else if (puzzle.message.find("oracle") != std::string::npos) {
+            std::cout << "Oracle port:\t" << puzzle.port << std::endl;
+        } else if (puzzle.message.find("dark side") != std::string::npos) {
+            std::cout << "Evil bit port:\t" << puzzle.port << std::endl;
+        } else if (puzzle.message.find("secret") != std::string::npos) {
+            std::cout << "Simple port:\t" << puzzle.port << std::endl;
+        } else {
+            std::cout << "Port:\t" << puzzle.port << "unexepected ..." << std::endl;
+        }
+    }
+    std::cout << "--------------------------------" << std::endl;
+}
+
 void PuzzleSolver::solvePuzzles() {
+    std::cout << "--------------------------------" << std::endl;
+
     for (PortMessagePair portMessagePair : portMessagePairs) {
-        std::cout << "Message from port: " << portMessagePair.port << " : "
-                  << portMessagePair.message << std::endl;
         if (portMessagePair.message.find("Send me a message") != std::string::npos) {
             std::cout << "Port " << portMessagePair.port << " is the x phase" << std::endl;
             solvePuzzleOne();
@@ -295,69 +323,4 @@ void PuzzleSolver::solvePuzzles() {
                       << std::endl;
         }
     }
-    // Go through the ports and send messages accordingly
-    // TODO: Fixa villu þegar portin eru núll: sudo ./puzzlesolver 130.208.242.120 0 0 0 0
-
-    // for (int i = 0; i < udpPortScanner->getOpenPorts().size(); ++i) {
-    //     std::cout << std::endl;
-    //     char messageBuffer[MAX_BUFFER];
-    //     memset(messageBuffer, 0, sizeof(messageBuffer));
-
-    //     udpPortScanner->getUdpClient()->setPort(udpPortScanner->getOpenPorts().at(i));
-    //     int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
-    //     std::string destinationAddress = udpPortScanner->getUdpClient()->getAddress();
-
-    //     std::cout << "Solving for " << destinationAddress << ":" << destinationPort << "..."
-    //               << std::endl;
-
-    //     udpPortScanner->getUdpClient()->setReceiveTimeout(500);
-
-    //     int bytesReceived = -1;
-
-    //     int tries = 1;
-    //     int maxTries = 5;
-    //     bool unableToGetResponse = false;
-    //     while (bytesReceived < 0) {
-    //         if (tries >= maxTries) {
-    //             unableToGetResponse = true;
-    //             break;
-    //         }
-
-    //         std::cout << "Trying to get a response from port " << destinationPort
-    //                   << " (tries: " << tries << ")..." << std::endl;
-    //         memset(messageBuffer, 0, sizeof(messageBuffer));
-    //         udpPortScanner->getUdpClient()->send(NULL, 0);
-    //         bytesReceived = udpPortScanner->getUdpClient()->receive(messageBuffer,
-    //         MAX_BUFFER); tries++;
-    //     }
-
-    //     if (unableToGetResponse) {
-    //         std::cout << "Unable to reach port " << destinationPort << "..." << std::endl;
-    //         continue;
-    //     }
-
-    //     std::cout << "Port " << destinationPort
-    //               << " responded with the following message:" << std::endl;
-    //     std::cout << messageBuffer << std::endl;
-
-    //     std::cout << "Determining which phase is applicable for port " << destinationPort <<
-    //     "..."
-    //               << std::endl;
-
-    //     std::string message = std::string(messageBuffer);
-
-    // if (message.find("Send me a message") != std::string::npos) {
-    //     std::cout << "Port " << destinationPort << " is the x phase" << std::endl;
-    //     solvePuzzleOne();
-    // } else if (message.find("I am the oracle") != std::string::npos) {
-    //     std::cout << "Port " << destinationPort << " is the y phase" << std::endl;
-    // } else if (message.find("The dark side") != std::string::npos) {
-    //     std::cout << "Port " << destinationPort << " is the evil bit phase" << std::endl;
-    // } else if (message.find("My boss") != std::string::npos) {
-    //     std::cout << "Port " << destinationPort << " is the z phase" << std::endl;
-    // } else {
-    //     std::cout << "Port " << destinationPort << " is the an unknown phase..." <<
-    //     std::endl;
-    // }
-    // }
 }
