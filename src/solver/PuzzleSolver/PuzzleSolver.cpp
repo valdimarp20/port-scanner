@@ -89,30 +89,30 @@ void PuzzleSolver::scanAndSetPorts() {
     }
     int lowPort = 4000;
     int highPort = 4100;
+    int tryEachPortAmount = 5;
+    int tries = 0;
+    int maxTries = 5;
+    bool unableToGetAllPorts = false;
 
-    int tries = 1;
-    int maxTries = 10;
-    bool unableToGetResponse = false;
-
-    if (udpPortScanner->getOpenPorts().size() != 4) {
-        udpPortScanner->scanPortRange(lowPort, highPort);
-
-        while (udpPortScanner->getOpenPorts().size() != 4) {
-            std::cout << "Something went wrong, didn't get all four ports!" << std::endl;
-            std::cout << "These ports are the open ports we found:" << std::endl;
-            udpPortScanner->displayOpenPorts();
-            std::cout << "Retrying..." << std::endl;
-            udpPortScanner->scanPortRange(lowPort, highPort);
+    while (udpPortScanner->getOpenPorts().size() != 4) {
+        if (tries >= maxTries) {
+            unableToGetAllPorts = true;
+            break;
         }
-    } else {
-        for (int port : udpPortScanner->getOpenPorts()) {
-            if (port < lowPort || port > highPort) {
-                continue;
-            }
-            PortMessagePair portMessagePair = scanAndGetPortMessagePair(port);
-            if (portMessagePair.port != -1) {
-                portMessagePairs.push_back(portMessagePair);
-            }
+        udpPortScanner->scanPortRange(lowPort, highPort, tryEachPortAmount);
+        tries++;
+    }
+
+    if (unableToGetAllPorts) {
+        std::cout << "Unable to get all four ports..." << std::endl;
+        std::cout << "Exiting..." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (int port : udpPortScanner->getOpenPorts()) {
+        PortMessagePair portMessagePair = scanAndGetPortMessagePair(port);
+        if (portMessagePair.port != -1) {
+            portMessagePairs.push_back(portMessagePair);
         }
     }
 }

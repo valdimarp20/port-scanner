@@ -54,23 +54,23 @@ int UdpPortScanner::sendReceiveWithTries(int maxTries) {
     return bytesReceived;
 }
 
-bool UdpPortScanner::isPortOpen(int port) {
-    return scanPort(port) && port == client->getAddressPort();
+bool UdpPortScanner::isPortOpen(int port, int tryAmount) {
+    return scanPort(port, tryAmount) && port == client->getAddressPort();
 }
 
-bool UdpPortScanner::scanPort(int port) {
+bool UdpPortScanner::scanPort(int port, int tryAmount) {
     client->setPort(port);
-    int bytesReceived = sendReceiveWithTries(10);
+    int bytesReceived = sendReceiveWithTries(tryAmount);
 
     return bytesReceived >= 0;
 }
 
-void UdpPortScanner::scanPortRange(int lowPort, int highPort) {
+void UdpPortScanner::scanPortRange(int lowPort, int highPort, int tryAmount) {
     std::cout << "Scanning ..." << std::endl;
 
     openPorts.clear();
     for (int currentPort = lowPort; currentPort <= highPort; currentPort++) {
-        if (isPortOpen(currentPort)) {
+        if (isPortOpen(currentPort, tryAmount)) {
             openPorts.push_back(currentPort);
         }
     }

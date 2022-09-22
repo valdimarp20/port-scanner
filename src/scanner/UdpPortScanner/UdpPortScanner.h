@@ -15,7 +15,7 @@ class UdpPortScanner {
         UdpClient *client;
         std::vector<int> openPorts;
         int sendReceiveWithTries(int maxTries);
-        bool scanPort(int port);
+        bool scanPort(int port, int tryAmount);
 
     public:
         UdpPortScanner();
@@ -23,8 +23,8 @@ class UdpPortScanner {
         virtual ~UdpPortScanner();
         UdpClient *getUdpClient();
         void displayOpenPorts();
-        bool isPortOpen(int port);
-        void scanPortRange(int lowPort, int highPort);
+        bool isPortOpen(int port, int tryAmount);
+        void scanPortRange(int lowPort, int highPort, int tryAmount);
         std::vector<int> &getOpenPorts();
         void setOpenPorts(std::vector<int> ports);
 };

@@ -23,8 +23,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    int tryAmount = 5;
     UdpPortScanner scanner = UdpPortScanner(&client);
-    scanner.scanPortRange(lowPort, highPort);
+    scanner.scanPortRange(lowPort, highPort, tryAmount);
     scanner.displayOpenPorts();
     return 0;
 }
