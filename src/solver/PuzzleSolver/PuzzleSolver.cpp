@@ -136,6 +136,7 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
             std::cout << exception.what() << std::endl;
         }
         bytesReceived = udpPortScanner->getUdpClient()->receive(buffer, MAX_BUFFER);
+        // tries++;
     }
 
     if (bytesReceived > 0 && udpPortScanner->getUdpClient()->getAddressPort() == port) {
@@ -143,6 +144,13 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
         portMessagePair.message = buffer;
     }
     return portMessagePair;
+}
+
+void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
+    std::string secret = simplePortMessage.substr(simplePortMessage.length() - 5);
+    int secretPort = stoi(secret);
+
+    secretPorts.push_back(secretPort);
 }
 
 void PuzzleSolver::printPorts() {
@@ -330,7 +338,7 @@ void PuzzleSolver::solvePuzzles() {
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
             std::cout << "Port " << portMessagePair.port << " is the evil bit phase" << std::endl;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
-            std::cout << "Port " << portMessagePair.port << " is the z phase" << std::endl;
+            solveSimplePort(portMessagePair.message);
         } else {
             std::cout << "Port " << portMessagePair.port << " is the an unknown phase..."
                       << std::endl;
