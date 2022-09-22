@@ -303,13 +303,13 @@ void PuzzleSolver::solvePuzzleOne() {
 void PuzzleSolver::printPuzzlePorts() {
     std::cout << "--------------------------------" << std::endl;
     for (PortMessagePair &puzzle : portMessagePairs) {
-        if (puzzle.message.find("containing") != std::string::npos) {
+        if (puzzle.message.find("Send me a message") != std::string::npos) {
             std::cout << "Checksum port:\t" << puzzle.port << std::endl;
-        } else if (puzzle.message.find("oracle") != std::string::npos) {
+        } else if (puzzle.message.find("I am the oracle") != std::string::npos) {
             std::cout << "Oracle port:\t" << puzzle.port << std::endl;
-        } else if (puzzle.message.find("dark side") != std::string::npos) {
+        } else if (puzzle.message.find("The dark side") != std::string::npos) {
             std::cout << "Evil bit port:\t" << puzzle.port << std::endl;
-        } else if (puzzle.message.find("secret") != std::string::npos) {
+        } else if (puzzle.message.find("My boss") != std::string::npos) {
             std::cout << "Simple port:\t" << puzzle.port << std::endl;
         } else {
             std::cout << "Port:\t" << puzzle.port << "unexepected ..." << std::endl;
