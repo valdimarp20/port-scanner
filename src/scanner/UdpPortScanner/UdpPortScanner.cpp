@@ -76,7 +76,7 @@ void UdpPortScanner::scanPortRange(int lowPort, int highPort) {
     }
 }
 
-std::vector<int> UdpPortScanner::getOpenPorts() {
+std::vector<int> &UdpPortScanner::getOpenPorts() {
     return this->openPorts;
 }
 

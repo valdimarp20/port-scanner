@@ -25,7 +25,7 @@ class UdpPortScanner {
         void displayOpenPorts();
         bool isPortOpen(int port);
         void scanPortRange(int lowPort, int highPort);
-        std::vector<int> getOpenPorts();
+        std::vector<int> &getOpenPorts();
         void setOpenPorts(std::vector<int> ports);
 };
 
