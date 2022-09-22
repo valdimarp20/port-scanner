@@ -130,7 +130,7 @@ void RawSocketClient::createDatagramAndSend(const char *sourceIpAddress, const c
     iph->ip_sum = calculateChecksum((unsigned short *)datagram, iph->ip_len);
 
     // UDP header
-    udph->uh_sport = htons(55349);
+    udph->uh_sport = htons(64155); // 55349
     udph->uh_dport = htons(4026);
     udph->uh_ulen = htons(8 + strlen(data));  // tcp header size
     udph->uh_sum = 0;                         // leave checksum 0 now, filled later by pseudo header

@@ -9,6 +9,49 @@
 
 #define MAX_BUFFER 4096
 
+unsigned short checkSum(unsigned short *ptr, int nbytes) {
+    long sum;
+    unsigned short oddbyte;
+    short answer;
+
+    sum = 0;
+    while (nbytes > 1) {
+        sum += *ptr++;
+        nbytes -= 2;
+    }
+    if (nbytes == 1) {
+        oddbyte = 0;
+        *((u_char *)&oddbyte) = *(u_char *)ptr;
+        sum += oddbyte;
+    }
+
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum = sum + (sum >> 16);
+    answer = (short)~sum;
+
+    return (answer);
+}
+
+
+void hexdump(void *ptr, int buflen) {
+    unsigned char *buf = (unsigned char*)ptr;
+    int i, j;
+    for (i=0; i<buflen; i+=16) {
+        printf("%06x: ", i);
+        for (j=0; j<16; j++)
+            if (i+j < buflen)
+                printf("%02x ", buf[i+j]);
+            else
+                printf("   ");
+        printf(" ");
+        for (j=0; j<16; j++)
+            if (i+j < buflen)
+                printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
+        printf("\n");
+    }
+}
+
+
 PuzzleSolver::PuzzleSolver() {
     this->destIpAddress = "";
 }
@@ -27,8 +70,8 @@ void PuzzleSolver::setPortsScan() {
         exit(1);
     }
 
-    int lowPort = atoi("4000");
-    int highPort = atoi("4100");
+    int lowPort = 4000;
+    int highPort = 4100;
     udpPortScanner->scanPortRange(lowPort, highPort);
 
     while (udpPortScanner->getOpenPorts().size() != 4) {
@@ -58,27 +101,268 @@ void PuzzleSolver::printPorts() {
     udpPortScanner->displayOpenPorts();
 }
 
-void PuzzleSolver::solvePuzzleOne(int port) {
+void PuzzleSolver::solvePuzzleOne() {
+    /*
     std::string message = "$group_6$";
     char buffer[MAX_BUFFER];
 
-    UdpClient client = UdpClient(destIpAddress, port);
+    UdpClient client1 = UdpClient(destIpAddress, port);
 
-    client.send(message.c_str(), message.size());
-    client.receive(buffer, MAX_BUFFER);
+    client1.send(message.c_str(), message.size());
+    client1.receive(buffer, MAX_BUFFER);
 
     std::cout << buffer << std::endl;
+
+    /*
+    RawSocketClient client = RawSocketClient(destIpAddress);
+    client.createSocket();
+    client.setDestinationPort(port);
+    client.createDatagramAndSend("10.1.19.34", "$group_6$");
+
+    udpPortScanner->getUdpClient()->setPort(port);
+
+    udpPortScanner->getUdpClient()->setReceiveTimeout(1000);
+    */
+
+    ///////// CREATE RAW SOCKET AND SEND //////
+
+
+    int rawSendSocket = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
+
+    if(rawSendSocket == -1)
+    {
+        //socket creation failed, may be because of non-root privileges
+        perror("Failed to create socket, make sure you are running with root privileges.");
+        exit(1);
+    }
+
+    int dest_port = 4026;
+    int source_port = 51192;
+
+
+    // Datagram to represent my package
+    char datagram[4096], source_ip[32], *data, *pseudogram;
+
+    memset(datagram, 0, 4096);
+
+    // IP header
+    struct ip *iph = (struct ip *) datagram;
+
+    // UDP header
+    struct udphdr *uhdr = (struct udphdr *) (datagram + sizeof(struct ip));
+
+    struct sockaddr_in sin;
+    struct pseudo_header psh;
+
+    //Data
+    data = (datagram + sizeof(struct ip)) + sizeof(struct udphdr);
+    strcpy(data, "$group_6$");
+
+
+    // address resolution
+    strcpy(source_ip, "192.168.50.65");
+
+    // destination
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(dest_port);
+    sin.sin_addr.s_addr = inet_addr ("130.208.242.120");
+
+
+    /* Fill the IP header */
+    iph->ip_hl = 5;   // version
+    iph->ip_v = 4;
+    iph->ip_tos = 0;
+    iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
+    iph->ip_id = htonl(54321);
+    iph->ip_off = 0;
+    iph->ip_ttl = 255;
+    iph->ip_p = IPPROTO_UDP;
+    iph->ip_sum = 0;
+    iph->ip_src.s_addr = inet_addr(source_ip);
+    iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+
+    // Checksum
+    iph->ip_sum = checkSum((unsigned short *) datagram, iph->ip_len);
+
+
+    //UDP Header
+    uhdr->uh_sport = htons (source_port);
+    uhdr->uh_dport = htons (dest_port);
+    uhdr->uh_ulen = htons(sizeof(struct udphdr) + strlen(data));
+    uhdr->uh_sum = 0;	//leave checksum 0 now, filled later by pseudo header
+
+
+    /* Now the UDP checksum */
+    psh.source_address = inet_addr( source_ip );
+    psh.dest_address = sin.sin_addr.s_addr;
+    psh.placeholder = 0;
+    psh.protocol = IPPROTO_UDP;
+    psh.udp_length = htons(sizeof(struct udphdr) + strlen(data) );
+
+
+    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+    pseudogram = (char *)(malloc(psize));
+
+    memcpy(pseudogram, (char *) &psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header),uhdr,sizeof(struct udphdr) + strlen(data));
+
+    uhdr->uh_sum = checkSum( (unsigned short*) pseudogram , psize);
+
+    // set timevalue for timeout
+    struct timeval tv;
+    tv.tv_sec = 3;
+    tv.tv_usec = 0;
+
+    //IP_HDRINCL to tell the kernel that headers are included in the packet
+    int one = 1;
+    const int *val = &one;
+    if (setsockopt (rawSendSocket, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
+    {
+        perror("Error setting IP_HDRINCL");
+        exit(0);
+    }
+
+    // send the packet
+    if (sendto (rawSendSocket, datagram, iph->ip_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+    {
+        perror("sendto failed");
+    }
+        //Data sent successfully
+    else {
+
+        printf ("Packet Sent. Length : %d \n" , iph->ip_len);
+
+        int rcv_sock = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+        struct sockaddr_in my_address;
+        my_address.sin_addr.s_addr = inet_addr("192.168.50.65");
+        my_address.sin_family = AF_INET;
+        my_address.sin_port = htons(source_port);
+
+
+        socklen_t socklen = (socklen_t)sizeof(my_address);
+        if(bind(rcv_sock, (struct sockaddr *) &my_address, socklen) < 0){
+            perror("bind failed");
+            exit(0);
+        }
+
+        if (setsockopt(rawSendSocket, SOL_SOCKET, SO_RCVTIMEO, &tv,sizeof(tv)) < 0) {
+            perror("Error");
+        }
+
+        char msg[1024];
+        memset(msg, 0, 1024);
+
+        struct sockaddr_in recv_addr {};
+        int recv_addr_size = sizeof(recv_addr);
+
+        int bytesReceived = recv(rcv_sock, msg, sizeof(msg), 0);
+        if(bytesReceived < 0) {
+            printf("RECIEVE ERROR: %s\n ", strerror(errno));
+            printf("port = %d\n address = %d\n\n", sin.sin_port, sin.sin_addr.s_addr);
+        } else {
+            printf("port number: %d\n", dest_port);
+            printf("%s\n", msg);
+            printf("checksum = ");
+            // std::cout << std::hex << iph->ip_sum << std::endl;
+            std::cout << bytesReceived << std::endl;
+        }
+
+        close( rawSendSocket );
+        close(rcv_sock);
+        printf("\n-- closed send socket --\n\n");
+
+    }
+
+
+    //////// DONE DOING RAW SOCKET //////
+
+    /*
+    RawSocketClient client = RawSocketClient(destIpAddress);
+    client.createSocket();
+    client.setDestinationPort(port);
+    client.createDatagramAndSend("192.168.50.65", "$group_6$");
+
+
+    udpPortScanner->getUdpClient()->bindSocket();
+    udpPortScanner->getUdpClient()->setPort(port);
+    udpPortScanner->getUdpClient()->setReceiveTimeout(1000);
+
+    char buffer2[MAX_BUFFER];
+    int bytesReceived = udpPortScanner->getUdpClient()->receive(buffer2, MAX_BUFFER);
+    std::cout << "DEBUG:" << std::endl;
+    std::cout << "Port: " << udpPortScanner->getUdpClient()->getAddressPort() << std::endl;
+    std::cout << "Buffer:" << std::endl;
+    // hexdump(&buffer2, MAX_BUFFER);
+    std::cout << buffer2 << std::endl;
+    std::cout << "Bytes received:" << std::endl;
+    std::cout << bytesReceived << std::endl;
+    */
+
 }
 
 void PuzzleSolver::solvePuzzles() {
+
     // Go through the ports and send messages accordingly
-    /*
+    // TODO: Fixa villu þegar portin eru núll: sudo ./puzzlesolver 130.208.242.120 0 0 0 0
     for (int i = 0; i < udpPortScanner->getOpenPorts().size(); ++i) {
-        std::cout << "Port " << udpPortScanner->getOpenPorts().at(i) << " is open." << std::endl;
-    int port = udpPortScanner->getOpenPorts().at(i);
+        std::cout << std::endl;
+        char messageBuffer[MAX_BUFFER];
+        memset(messageBuffer, 0, sizeof(messageBuffer));
+        udpPortScanner->getUdpClient()->setPort(udpPortScanner->getOpenPorts().at(i));
+        int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
+        std::string destinationAddress = udpPortScanner->getUdpClient()->getAddress();
+        std::cout << "Solving for " << destinationAddress << ":" << destinationPort << "..." << std::endl;
+
+        udpPortScanner->getUdpClient()->setReceiveTimeout(500);
+
+        int bytesReceived = -1;
+
+        int tries = 1;
+        int maxTries = 5;
+        bool unableToGetResponse = false;
+        while (bytesReceived < 0) {
+            if (tries >= maxTries) {
+                unableToGetResponse = true;
+                break;
+            }
+
+            std::cout << "Trying to get a response from port " << destinationPort << " (tries: " << tries << ")..." << std::endl;
+            memset(messageBuffer, 0, sizeof(messageBuffer));
+            udpPortScanner->getUdpClient()->send(0, NULL);
+            bytesReceived = udpPortScanner->getUdpClient()->receive(messageBuffer, MAX_BUFFER);
+            tries++;
+        }
+
+        if (unableToGetResponse) {
+            std::cout << "Unable to reach port " << destinationPort << "..." << std::endl;
+            continue;
+        }
+
+        std::cout << "Port " << destinationPort << " responded with the following message:" << std::endl;
+        std::cout << messageBuffer << std::endl;
+
+        std::cout << "Determining which phase is applicable for port " << destinationPort << "..." << std::endl;
+
+        std::string message = std::string(messageBuffer);
+
+        if (message.find("Send me a message") != std::string::npos) {
+            std::cout << "Port " << destinationPort << " is the x phase" << std::endl;
+            solvePuzzleOne();
+        } else if (message.find("I am the oracle")!= std::string::npos) {
+            std::cout << "Port " << destinationPort << " is the y phase" << std::endl;
+        } else if (message.find("The dark side")!= std::string::npos) {
+            std::cout << "Port " << destinationPort << " is the evil bit phase" << std::endl;
+        } else if (message.find("My boss")!= std::string::npos) {
+            std::cout << "Port " << destinationPort << " is the z phase" << std::endl;
+        } else {
+            std::cout << "Port " << destinationPort << " is the an unknown phase..." << std::endl;
+        }
+
+
     }
-    */
-    solvePuzzleOne(udpPortScanner->getOpenPorts().at(0));
+
+    // solvePuzzleOne(udpPortScanner->getOpenPorts().at(0));
     ///////////////////////////////////////////////////////////////////////////////////////////
     /// Testing to send and listen for port 4026 which sould be the 0th open port           ///
     ///////////////////////////////////////////////////////////////////////////////////////////

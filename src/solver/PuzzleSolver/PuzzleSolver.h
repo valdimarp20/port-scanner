@@ -19,7 +19,7 @@ class PuzzleSolver {
                      UdpPortScanner *udpPortScanner);
         virtual ~PuzzleSolver();
         void printPorts();
-        void solvePuzzleOne(int port);
+        void solvePuzzleOne();
         void solvePuzzles();
 };
 

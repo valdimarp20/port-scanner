@@ -97,3 +97,13 @@ int UdpClient::receive(const void *buffer, int bufferSize) {
         recvfrom(socket, (void *)buffer, bufferSize, 0, (sockaddr *)&address, &addressSize);
     return bytesRead;
 }
+
+void UdpClient::bindSocket() {
+    bind(socket, (struct sockaddr *) &address, (socklen_t)sizeof(address));
+}
+
+std::string UdpClient::getAddress() {
+    char str[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN);
+    return std::string(str);
+}

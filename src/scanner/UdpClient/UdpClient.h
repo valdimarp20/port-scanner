@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <string>
 
 class UdpClient {
     private:
@@ -24,8 +25,10 @@ class UdpClient {
         UdpClient(const char *ipAddress, int port);
         virtual ~UdpClient();
         int getAddressPort();
+        std::string getAddress();
         void setPort(int port);
         void setReceiveTimeout(int milliseconds);
+        void bindSocket();
         int receive(const void *buffer, int bufferSize);
         void send(const void *data, int dataSize);
 };

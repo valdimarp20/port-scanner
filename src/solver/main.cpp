@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
         // No ports were supplied via the user
         // Using the PuzzleSolver constructor with one argument, it solves the ports itself
 
-        puzzleSolver = PuzzleSolver(&scanner);
+        puzzleSolver = PuzzleSolver(argv[1], &scanner);
     } else {
         puzzleSolver = PuzzleSolver(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]),
                                     atoi(argv[5]), &scanner);
