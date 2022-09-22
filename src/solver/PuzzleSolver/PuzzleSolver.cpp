@@ -149,8 +149,9 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
 void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
     std::string secret = simplePortMessage.substr(simplePortMessage.length() - 5);
     int secretPort = stoi(secret);
-
     secretPorts.push_back(secretPort);
+
+    std::cout << "\tDon't tell the boss that we found the secret port: " << secretPort << std::endl;
 }
 
 void PuzzleSolver::printPorts() {
@@ -338,7 +339,9 @@ void PuzzleSolver::solvePuzzles() {
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
             std::cout << "Port " << portMessagePair.port << " is the evil bit phase" << std::endl;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
+            std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
             solveSimplePort(portMessagePair.message);
+            std::cout << "--------------------------------" << std::endl;
         } else {
             std::cout << "Port " << portMessagePair.port << " is the an unknown phase..."
                       << std::endl;
