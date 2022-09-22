@@ -26,8 +26,6 @@ class PuzzleSolver {
         void scanAndSetPorts();
         PortMessagePair scanAndGetPortMessagePair(int port);
 
-        void solveSimplePort(std::string simplePortMessage);
-
     public:
         PuzzleSolver();
         PuzzleSolver(UdpPortScanner *udpPortScanner);
@@ -37,7 +35,10 @@ class PuzzleSolver {
         virtual ~PuzzleSolver();
         void printPuzzlePorts();
         void printPorts();
-        void solvePuzzleOne(PortMessagePair messagePair);
+
+        void solveSimplePort(std::string simplePortMessage);
+        void solveEvilBitPort(PortMessagePair messagePair);
+        void solveChecksumPort(PortMessagePair messagePair);
         void solvePuzzles();
         void test();
 };

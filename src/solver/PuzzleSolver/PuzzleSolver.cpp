@@ -145,6 +145,9 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
     }
     return portMessagePair;
 }
+void PuzzleSolver::printPorts() {
+    udpPortScanner->displayOpenPorts();
+}
 
 void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
     std::string secret = simplePortMessage.substr(simplePortMessage.length() - 5);
@@ -154,11 +157,178 @@ void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
     std::cout << "\tDon't tell the boss that we found the secret port: " << secretPort << std::endl;
 }
 
-void PuzzleSolver::printPorts() {
-    udpPortScanner->displayOpenPorts();
+void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
+// Hello, group_6! To get the secret phrase,
+// send me a udp message where the payload is a valid UDP IPv4 packet,
+// that has a valid UDP checksum of 0xeb41, and with the source address being
+// 107.175.100.13! (the last 6 bytes of this message contain this information
+// in network order)�Ak�d
+#pragma region socket creation
+    std::cout << "Original message from port " << messagePair.port << ":" << std::endl;
+    std::cout << messagePair.message << "\n" << std::endl;
+
+    // Create udp socket
+    std::cout << "Creating up udp socket ... " << std::endl;
+    int udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (udpSocket < 0) {
+        std::cout << "failed to create udp socket :(" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "Udpsocket created successfully !!" << std::endl;
+
+    int milliseconds = 1000;
+    timeval timeout;
+    timeout.tv_sec = milliseconds / 1000;
+    timeout.tv_usec = (milliseconds % 1000) * 1000;
+
+    std::cout << "Setting udp socket timeout to '" << milliseconds << "' milliseconds ..."
+              << std::endl;
+    int timeoutSet = setsockopt(udpSocket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    if (timeoutSet < 0) {
+        std::cout << "Failed to set udp socket timeout" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "Udpsocket timeout set successfully !!" << std::endl;
+
+    struct sockaddr_in udpSocketAddress;
+    udpSocketAddress.sin_family = AF_INET;
+    udpSocketAddress.sin_port = htons(messagePair.port);
+
+    socklen_t udpSocketAddressSize = sizeof(udpSocketAddress);
+
+    int isUdpSocketAddressSet = inet_pton(AF_INET, destIpAddress, &udpSocketAddress.sin_addr);
+    if (isUdpSocketAddressSet < 0) {
+        std::cout << "Failed to set udp socket socket address ... " << std::endl;
+        exit(EXIT_FAILURE);
+    }
+#pragma endregion
+
+#pragma region sending group message
+    int bytesSent, bytesReceived = -1, tries = 0, maxTries = 10;
+    char buffer[MAX_BUFFER];
+
+    while (bytesReceived < 0 && tries < maxTries) {
+        std::cout << "Trying to send, for the " << tries << " time" << std::endl;
+        bytesSent = sendto(udpSocket, groupMessage.c_str(), groupMessage.size(), 0,
+                           (struct sockaddr *)&udpSocketAddress, udpSocketAddressSize);
+        bytesReceived = recvfrom(udpSocket, buffer, sizeof(buffer), 0,
+                                 (struct sockaddr *)&udpSocketAddress, &udpSocketAddressSize);
+        tries++;
+    }
+    if (bytesSent < 0) {
+        std::cout << "No bytes were sent from udpSocket" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (bytesReceived < 0) {
+        std::cout << "No bytes were received from udpSocket" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    } else {
+        std::cout << "Got message :" << std::endl << buffer << std::endl;
+    }
+#pragma endregion
+
+    // std::string lastSixBytesInMessage = stringBuffer.substr(bytesReceived - 6, bytesReceived);
+    std::string checksumInMessage;
+    std::string ipAddressInMessage;
+    std::string stringBuffer(buffer);
+
+    // TODO: find better way to get checksum
+    int checksumInMessagePosition = stringBuffer.find("0x");
+    checksumInMessage = stringBuffer.substr(checksumInMessagePosition + 2, 4);
+    std::cout << "Got checksum: " << checksumInMessage << std::endl;
+
+    int ipAddressMessagePosition = stringBuffer.find("being ");
+    ipAddressInMessage = stringBuffer.substr(ipAddressMessagePosition);
+
+    int exclamationPosition = ipAddressInMessage.find("!");
+    ipAddressInMessage = ipAddressInMessage.substr(0, exclamationPosition);
+    std::cout << "Got ip address: " << ipAddressInMessage << std::endl;
+
+#pragma region creating ipv4 udp packet
+    char datagram[4096], *pseudogram;
+    memset(datagram, 0, 4096);
+    std::cout << "We passed the datagram memset !" << std::endl;
+
+    // IP header
+    struct ip *iph = (struct ip *)datagram;
+
+    // UDP header
+    struct udphdr *uhdr = (struct udphdr *)(datagram + sizeof(struct ip));
+
+    struct sockaddr_in sin;
+    struct pseudo_header psh;
+
+    // Address resolution
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(messagePair.port);
+    sin.sin_addr.s_addr = inet_addr(destIpAddress);
+
+    // Fill the IP header
+
+    iph->ip_hl = 5;
+    iph->ip_v = 4;
+    iph->ip_tos = 0;
+    iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + 2;
+    iph->ip_id = htons(54321);
+    iph->ip_off = 0;
+    iph->ip_ttl = 255;
+    iph->ip_p = IPPROTO_UDP;
+    iph->ip_sum = 0;
+    iph->ip_src.s_addr = inet_addr(ipAddressInMessage.c_str());
+    iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+
+    // UDP header
+    uhdr->uh_sport = htons(65196);
+    uhdr->uh_dport = htons(messagePair.port);
+    uhdr->uh_ulen = htons(sizeof(struct udphdr) + 2);
+
+    psh.source_address = inet_addr(ipAddressInMessage.c_str());
+    psh.dest_address = sin.sin_addr.s_addr;
+    psh.placeholder = 0;
+    psh.protocol = IPPROTO_UDP;
+    psh.udp_length = htons(sizeof(struct udphdr) + 2);
+
+    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + 2;
+    pseudogram = (char *)(malloc(psize));
+
+    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header), uhdr, sizeof(struct udphdr) + 2);
+
+    uhdr->uh_sum = checkSum((unsigned short *)pseudogram, stoul(checksumInMessage, 0, 16));
+    iph->ip_sum = htons(checkSum((unsigned short *)datagram, iph->ip_len));
+
+    bytesReceived = -1;
+    tries = 0;
+    bytesSent = -1;
+
+    memset(buffer, 0, sizeof(buffer));
+    while (bytesReceived < 0 && tries < maxTries) {
+        std::cout << "Trying to send, for the " << tries << " time" << std::endl;
+        bytesSent = sendto(udpSocket, datagram, psize, 0, (struct sockaddr *)&udpSocketAddress,
+                           udpSocketAddressSize);
+        bytesReceived = recvfrom(udpSocket, buffer, sizeof(buffer), 0,
+                                 (struct sockaddr *)&udpSocketAddress, &udpSocketAddressSize);
+        tries++;
+    }
+    if (bytesSent < 0) {
+        std::cout << "No bytes were sent from udpSocket" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (bytesReceived < 0) {
+        std::cout << "No bytes were received from udpSocket" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    } else {
+        std::cout << "Got message :" << std::endl << buffer << std::endl;
+    }
+
+#pragma endregion
 }
 
-void PuzzleSolver::solvePuzzleOne(PortMessagePair messagePair) {
+void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
     std::cout << "The following was the originial message from port " << messagePair.port << ":"
               << std::endl;
 
@@ -270,7 +440,8 @@ void PuzzleSolver::solvePuzzleOne(PortMessagePair messagePair) {
 
     memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
     memcpy(pseudogram + sizeof(struct pseudo_header), uhdr, sizeof(struct udphdr) + strlen(data1));
-
+    //  udph->uh_sum = htons((unsigned short)stoul(stringChecksum, 0, 16)); // The checksum given in
+    //  the text
     uhdr->uh_sum = checkSum((unsigned short *)pseudogram, psize);
 
     // IP_HDRINCL to tell the kernel that headers are included in the packet
@@ -343,10 +514,11 @@ void PuzzleSolver::solvePuzzles() {
         udpPortScanner->getUdpClient()->setPort(portMessagePair.port);
         if (portMessagePair.message.find("Send me a message") != std::string::npos) {
             std::cout << "Port " << portMessagePair.port << " is the checksum phase" << std::endl;
-            solvePuzzleOne(portMessagePair);
+            solveChecksumPort(portMessagePair);
         } else if (portMessagePair.message.find("I am the oracle") != std::string::npos) {
             std::cout << "Port " << portMessagePair.port << " is the oracle phase" << std::endl;
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
+            // solveEvilBitPort(portMessagePair);
             std::cout << "Port " << portMessagePair.port << " is the evil bit phase" << std::endl;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
