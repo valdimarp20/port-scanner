@@ -203,12 +203,12 @@ void PuzzleSolver::solveChecksumPort(int port) {
 
         // Find the source ip address
         int ipAdddressPosition = messageBuffer.find("being ");
-        sourceIpAddress = messageBuffer.substr(ipAdddressPosition);
+        sourceIpAddress = messageBuffer.substr(ipAdddressPosition + 6);
 
         int exclamationPosition = sourceIpAddress.find("!");
         sourceIpAddress = sourceIpAddress.substr(0, exclamationPosition);
 
-        std::cout << "Source address to spoof:  " << sourceIpAddress << std::endl;
+        std::cout << "Source address to spoof: " << sourceIpAddress << std::endl;
         std::cout << "Checksum in message:  0x" << checkSum << std::endl;
 
         getChecksumPortSecret(port, sourceIpAddress, checkSum);
