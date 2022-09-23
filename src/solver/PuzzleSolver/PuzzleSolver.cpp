@@ -350,43 +350,10 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
 
     std::cout << "Setting up an appropriate response..." << std::endl;
 
-    std::string data0 = "$group_6$";
-    char responseMessageBuffer[MAX_BUFFER];
-    memset(responseMessageBuffer, 0, sizeof(responseMessageBuffer));
-
-    int destinationPort = udpPortScanner->getUdpClient()->getAddressPort();
-    std::string destinationAddress = udpPortScanner->getUdpClient()->getAddress();
-
-    std::cout << "Sending an appropriate response..." << std::endl;
-
-    int bytesReceived = -1;
-    int tries = 1;
-    int maxTries = 20;
-
-    while (bytesReceived < 0) {
-        if (tries >= maxTries) {
-            break;
-        }
-
-        udpPortScanner->getUdpClient()->send(groupMessage.c_str(), groupMessage.size());
-        bytesReceived = udpPortScanner->getUdpClient()->receive(responseMessageBuffer, MAX_BUFFER);
-        tries++;
-    }
-
-    if (bytesReceived < 0) {
-        std::cout << "Unable to reach port " << destinationPort << "..." << std::endl;
-        return;
-    }
-
-    std::cout << "Port " << destinationPort
-              << " responded with the following message:" << std::endl;
-    std::cout << responseMessageBuffer << "\n" << std::endl;
-
-    std::cout << "Setting up an appropriate response..." << std::endl;
-
     int rawSendSocket;
     if ((rawSendSocket = socket(AF_INET, SOCK_RAW, IPPROTO_UDP)) < 0) {
         std::cout << "Failed to create socket" << std::endl;
+        std::cout << strerror(errno) << std::endl;
         exit(1);
     }
 
@@ -410,13 +377,13 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
 
     // Data
     data1 = (datagram + sizeof(struct ip)) + sizeof(struct udphdr);
-    strcpy(data1, "[udp packet with all the stuff i need to do]");
+    strcpy(data1, "$group_6$");
 
     // Address resolution
 
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(destinationPort);
-    sin.sin_addr.s_addr = inet_addr(destinationAddress.c_str());
+    sin.sin_port = htons(messagePair.port);
+    sin.sin_addr.s_addr = inet_addr(destIpAddress);
 
     // Fill the IP header
 
@@ -425,7 +392,7 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
     iph->ip_tos = 0;
     iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data1);
     iph->ip_id = htons(54321);
-    iph->ip_off = 0;
+    iph->ip_off = 0x8000;  // htons(0x80);   Evil bit
     iph->ip_ttl = 255;
     iph->ip_p = IPPROTO_UDP;
     iph->ip_sum = 0;
@@ -439,7 +406,7 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
     // UDP header
 
     uhdr->uh_sport = htons(RAW_COMMUNICATION_PORT);
-    uhdr->uh_dport = htons(destinationPort);
+    uhdr->uh_dport = htons(messagePair.port);
     uhdr->uh_ulen = htons(sizeof(struct udphdr) + strlen(data1));
     uhdr->uh_sum = 0;  // leave checksum 0 now, filled later by pseudo header
 
@@ -468,25 +435,32 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
 
     int bytesReceived1 = -1;
     int tries1 = 1;
-    int maxTries1 = 5;
+    int maxTries1 = 10;
     bool unableToGetResponse1 = false;
 
     UdpClient client = UdpClient(inet_ntoa(local_addr.sin_addr), RAW_COMMUNICATION_PORT);
 
-    client.setReceiveTimeout(200);
+    client.setReceiveTimeout(1000);
     client.bindSocket();
     // udpPortScanner->getUdpClient()->setPort(RAW_COMMUNICATION_PORT);
-
+    char responseMessageBuffer[4096];
     while (bytesReceived1 < 0) {
         memset(responseMessageBuffer, 0, sizeof(responseMessageBuffer));
         if (tries1 >= maxTries1) {
             unableToGetResponse1 = true;
             break;
         }
-        std::cout << "Trying to get a response from port " << destinationPort
+        std::cout << "Trying to get a response from port " << messagePair.port
                   << " via raw packet (tries: " << tries1 << ")..." << std::endl;
 
-        sendto(rawSendSocket, datagram, iph->ip_len, 0, (struct sockaddr *)&sin, sizeof(sin));
+        // sendto(raw_sock, &packet, (sizeof(struct ip) + sizeof(struct udphdr) +
+        // strlen(evil_data)), 0, (const struct sockaddr *)&dest_addr, sizeof(dest_addr))
+
+        // sendto(rawSendSocket, datagram, iph->ip_len, 0, (struct sockaddr *)&sin, sizeof(sin));
+
+        sendto(rawSendSocket, &datagram,
+               (sizeof(struct ip) + sizeof(struct udphdr) + strlen(data1)), 0,
+               (struct sockaddr *)&sin, sizeof(sin));
 
         bytesReceived1 = client.receive(responseMessageBuffer, MAX_BUFFER);
         tries1++;
@@ -494,13 +468,48 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
 
     if (unableToGetResponse1) {
         std::cout << "Unable to recieve whilst sending a raw udp packet via port "
-                  << destinationPort << "..." << std::endl;
+                  << messagePair.port << "..." << std::endl;
         return;
     }
 
-    std::cout << "Port " << destinationPort
+    std::cout << "Port " << messagePair.port
               << " responded with the following message:" << std::endl;
     std::cout << responseMessageBuffer << std::endl;
+
+    std::cout << "Secret port from Evil puzzle is:" << std::endl;
+
+    std::cout << responseMessageBuffer << std::endl;
+
+    std::string message = std::string(responseMessageBuffer);
+    int startPos = message.find(":");
+    int endPos = strlen(message.c_str());
+
+    std::string stringPort = message.substr(startPos + 3, endPos).c_str();
+
+    std::cout << "String port: " << message.substr(startPos + 3, endPos) << std::endl;
+
+    int intPort = atoi(stringPort.c_str());
+
+    std::cout << "Int port: " << intPort << std::endl;
+
+    /*
+    initializing udpportscanner
+    --------------------------------
+    Evil bit port:  4052
+    --------------------------------
+    --------------------------------
+    Port 4052 is the evil bit phase
+    The following was the originial message from port 4052:
+    The dark side of network programming is a pathway to many abilities some consider to
+    be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit) Send us a message containing your group
+    number in the form
+    "$group_#$" where # is your group number.
+
+    Setting up an appropriate response...
+    Trying to get a response from port 4052 via raw packet (tries: 1)...
+    Port 4052 responded with the following message:
+    0x7ff7b14694e0
+    */
 }
 
 void PuzzleSolver::printPuzzlePorts() {
@@ -528,16 +537,10 @@ void PuzzleSolver::solvePuzzles() {
         udpPortScanner->getUdpClient()->setPort(portMessagePair.port);
         if (portMessagePair.message.find("Send me a message") != std::string::npos) {
             continue;
-            // std::cout << "Port " << portMessagePair.port << " is the checksum phase" <<
-            // std::endl; solveChecksumPort(portMessagePair);
         } else if (portMessagePair.message.find("I am the oracle") != std::string::npos) {
             continue;
-            // std::cout << "Port " << portMessagePair.port << " is the oracle phase" << std::endl;
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
-            continue;
-            // solveEvilBitPort(portMessagePair);
-            // std::cout << "Port " << portMessagePair.port << " is the evil bit phase" <<
-            // std::endl;
+            solveEvilBitPort(portMessagePair);
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
             solveSimplePort(portMessagePair.message);
@@ -558,7 +561,7 @@ void PuzzleSolver::test() {
         exit(1);
     }
 
-    int dest_port = 4026;
+    int dest_port = 4052;
     int source_port = 51192;
 
     // Datagram to represent my package
@@ -580,7 +583,7 @@ void PuzzleSolver::test() {
     strcpy(data, "$group_6$");
 
     // address resolution
-    strcpy(source_ip, "192.168.50.65");
+    strcpy(source_ip, "10.2.26.155");
 
     // destination
     sin.sin_family = AF_INET;
@@ -648,7 +651,7 @@ void PuzzleSolver::test() {
         int rcv_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
         struct sockaddr_in my_address;
-        my_address.sin_addr.s_addr = inet_addr("192.168.50.65");
+        my_address.sin_addr.s_addr = inet_addr("10.2.26.155");
         my_address.sin_family = AF_INET;
         my_address.sin_port = htons(source_port);
 
