@@ -289,6 +289,7 @@ std::string PuzzleSolver::getChecksumPortSecret(int port, std::string sourceIpAd
 
     bytesReceived = client.receive(buffer, sizeof(buffer));
     if (bytesReceived > 0) {
+        std::cout << buffer << std::endl;
         secretMessage = buffer;
     }
 
