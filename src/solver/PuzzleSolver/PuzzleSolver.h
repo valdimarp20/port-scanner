@@ -26,6 +26,9 @@ class PuzzleSolver {
         void scanAndSetPorts();
         PortMessagePair scanAndGetPortMessagePair(int port);
 
+        std::string getChecksumPortSecret(int port, std::string sourceIpAddress,
+                                          std::string checkSum);
+
     public:
         PuzzleSolver();
         PuzzleSolver(UdpPortScanner *udpPortScanner);
@@ -38,7 +41,7 @@ class PuzzleSolver {
 
         void solveSimplePort(std::string simplePortMessage);
         void solveEvilBitPort(PortMessagePair messagePair);
-        void solveChecksumPort(PortMessagePair messagePair);
+        void solveChecksumPort(int port);
         void solvePuzzles();
         void test();
 };

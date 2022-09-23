@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <sys/socket.h>
+
 #include <string>
 
 class UdpClient {
@@ -29,6 +30,7 @@ class UdpClient {
         void setPort(int port);
         void setReceiveTimeout(int milliseconds);
         void bindSocket();
+        void closeSocket();
         int receive(const void *buffer, int bufferSize);
         void send(const void *data, int dataSize);
 };

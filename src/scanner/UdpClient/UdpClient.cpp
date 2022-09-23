@@ -99,7 +99,11 @@ int UdpClient::receive(const void *buffer, int bufferSize) {
 }
 
 void UdpClient::bindSocket() {
-    bind(socket, (struct sockaddr *) &address, (socklen_t)sizeof(address));
+    bind(socket, (struct sockaddr *)&address, (socklen_t)sizeof(address));
+}
+
+void UdpClient::closeSocket() {
+    close(socket);
 }
 
 std::string UdpClient::getAddress() {
