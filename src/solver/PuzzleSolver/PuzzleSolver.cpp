@@ -127,6 +127,12 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
 
     int maxTries = 5, tries = 0, bytesReceived = -1;
 
+    try {
+        udpPortScanner->getUdpClient()->setReceiveTimeout(1000);
+    } catch (SocketException &exception) {
+        std::cerr << exception.what() << std::endl;
+        exit(1);
+    }
     udpPortScanner->getUdpClient()->setPort(port);
 
     while (tries < maxTries && bytesReceived < 0) {
@@ -145,6 +151,7 @@ PortMessagePair PuzzleSolver::scanAndGetPortMessagePair(int port) {
     }
     return portMessagePair;
 }
+
 void PuzzleSolver::printPorts() {
     udpPortScanner->displayOpenPorts();
 }
@@ -282,7 +289,8 @@ void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
     // UDP header
     uhdr->uh_sport = htons(65196);
     uhdr->uh_dport = htons(messagePair.port);
-    uhdr->uh_ulen = htons(sizeof(struct udphdr) + 2);
+    uhdr->uh_ulen = htons(10);  // htons(sizeof(struct udphdr) + 2);
+    uhdr->uh_sum = checkSum((unsigned short *)pseudogram, stoul(checksumInMessage, 0, 16));
 
     psh.source_address = inet_addr(ipAddressInMessage.c_str());
     psh.dest_address = sin.sin_addr.s_addr;
@@ -296,7 +304,13 @@ void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
     memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
     memcpy(pseudogram + sizeof(struct pseudo_header), uhdr, sizeof(struct udphdr) + 2);
 
-    uhdr->uh_sum = checkSum((unsigned short *)pseudogram, stoul(checksumInMessage, 0, 16));
+    std::string *messagebuffer;
+
+    unsigned short csumCheck = checkSum((unsigned short *)pseudogram, psize);
+
+    messagebuffer = (std::string *)(datagram + sizeof(ip) + sizeof(udphdr));
+    memcpy(messagebuffer, &csumCheck, 2);
+
     iph->ip_sum = htons(checkSum((unsigned short *)datagram, iph->ip_len));
 
     bytesReceived = -1;
@@ -513,13 +527,17 @@ void PuzzleSolver::solvePuzzles() {
     for (PortMessagePair portMessagePair : portMessagePairs) {
         udpPortScanner->getUdpClient()->setPort(portMessagePair.port);
         if (portMessagePair.message.find("Send me a message") != std::string::npos) {
-            std::cout << "Port " << portMessagePair.port << " is the checksum phase" << std::endl;
-            solveChecksumPort(portMessagePair);
+            continue;
+            // std::cout << "Port " << portMessagePair.port << " is the checksum phase" <<
+            // std::endl; solveChecksumPort(portMessagePair);
         } else if (portMessagePair.message.find("I am the oracle") != std::string::npos) {
-            std::cout << "Port " << portMessagePair.port << " is the oracle phase" << std::endl;
+            continue;
+            // std::cout << "Port " << portMessagePair.port << " is the oracle phase" << std::endl;
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
+            continue;
             // solveEvilBitPort(portMessagePair);
-            std::cout << "Port " << portMessagePair.port << " is the evil bit phase" << std::endl;
+            // std::cout << "Port " << portMessagePair.port << " is the evil bit phase" <<
+            // std::endl;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
             solveSimplePort(portMessagePair.message);
