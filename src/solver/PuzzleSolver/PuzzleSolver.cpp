@@ -15,7 +15,7 @@
 #include "../../shared/SocketException.h"
 
 #define MAX_BUFFER 4096
-#define RAW_COMMUNICATION_PORT 666
+#define RAW_COMMUNICATION_PORT 45000
 
 unsigned short checkSum(unsigned short *ptr, int nbytes) {
     long sum;
@@ -390,7 +390,8 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
     int maxTries1 = 10;
     bool unableToGetResponse1 = false;
 
-    UdpClient client = UdpClient(inet_ntoa(local_addr.sin_addr), messagePair.port);
+    // UdpClient client = UdpClient(inet_ntoa(local_addr.sin_addr), messagePair.port);
+    UdpClient client = UdpClient(inet_ntoa(local_addr.sin_addr), RAW_COMMUNICATION_PORT);
 
     client.setReceiveTimeout(1000);
     client.bindSocket();
@@ -437,6 +438,11 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
 
     std::cout << "Int port: " << intPort << std::endl;
 
+    secretPorts.push_back(intPort);
+
+    std::cout << "Secret port 0: " << secretPorts[0] << ", Secret port 1: " << secretPorts[1]
+              << std::endl;
+
     /*
     initializing udpportscanner
     --------------------------------
@@ -463,7 +469,7 @@ void PuzzleSolver::solveOraclePort() {
 
     std::string result =
         std::to_string(secretPorts[0]) + "," +
-        std::to_string(secretPorts[0]);  // as of now, port 4015 is the evil bit secret port
+        std::to_string(secretPorts[1]);  // as of now, port 4015 is the evil bit secret port
     client.setReceiveTimeout(500);
 
     std::cout << "Going to send this data to the oracle port:\n" << result << std::endl;
@@ -580,7 +586,7 @@ void PuzzleSolver::solvePuzzles() {
             oraclePort = portMessagePair.port;
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
             std::cout << "------ EVIL BIT PORT -----" << std::endl;
-            // solveEvilBitPort(portMessagePair);
+            solveEvilBitPort(portMessagePair);
             continue;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
