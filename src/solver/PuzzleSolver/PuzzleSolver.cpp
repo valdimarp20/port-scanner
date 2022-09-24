@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "../../scanner/UdpClient/UdpClient.h"
@@ -164,7 +165,10 @@ void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
     std::cout << "\tDon't tell the boss that we found the secret port: " << secretPort << std::endl;
 }
 
-void PuzzleSolver::solveChecksumPort(int port) {
+void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
+    std::cout << "This was the message we got:" << std::endl;
+    std::cout << messagePair.message << std::endl;
+    int port = messagePair.port;
     char buffer[MAX_BUFFER];
     int tries = 0, maxTries = 5, bytesReceived;
     std::string checkSum;
@@ -211,7 +215,11 @@ void PuzzleSolver::solveChecksumPort(int port) {
         std::cout << "Source address to spoof: " << sourceIpAddress << std::endl;
         std::cout << "Checksum in message:  0x" << checkSum << std::endl;
 
-        getChecksumPortSecret(port, sourceIpAddress, checkSum);
+        secretMessage = getChecksumPortSecret(port, sourceIpAddress, checkSum);
+
+        int quoteStart = secretMessage.find("\"");
+        secretPhrase =
+            secretMessage.substr(quoteStart + 1, secretMessage.length() - quoteStart - 2);
 
         client.closeSocket();
     } else {
@@ -297,6 +305,9 @@ std::string PuzzleSolver::getChecksumPortSecret(int port, std::string sourceIpAd
 }
 
 void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
+    std::cout << "This was the message we got:" << std::endl;
+    std::cout << messagePair.message << std::endl;
+
     int rawSendSocket = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (rawSendSocket < 0) {
         std::cerr << "Failed to create raw socket" << std::endl;
@@ -446,6 +457,97 @@ void PuzzleSolver::solveEvilBitPort(PortMessagePair messagePair) {
     */
 }
 
+void PuzzleSolver::solveOraclePort() {
+    UdpClient client = UdpClient(destIpAddress, oraclePort);
+    // std::string result = std::to_string(secretPorts[0]) + "," + std::to_string(secretPorts[1]);
+
+    std::string result =
+        std::to_string(secretPorts[0]) + "," +
+        std::to_string(secretPorts[0]);  // as of now, port 4015 is the evil bit secret port
+    client.setReceiveTimeout(500);
+
+    std::cout << "Going to send this data to the oracle port:\n" << result << std::endl;
+
+    int bytesReceived = -1;
+    int tries = 0;
+    int maxTries = 10;
+
+    int bufferSize = 4096;
+    char buffer[bufferSize];
+
+    while (bytesReceived < 0 && tries < maxTries) {
+        std::cout << "Trying to send to the oracle port (" << tries << ") tries..." << std::endl;
+        client.send(result.c_str(), result.size());
+
+        bytesReceived = client.receive(buffer, bufferSize);
+
+        tries++;
+    }
+
+    if (bytesReceived < 0) {
+        std::cout << "The server did not respond :(" << std::endl;
+        return;
+    }
+
+    bytesReceived = -1;
+    // Should get this response: 4015,4091,4091,4091,4015
+    std::cout << "The server responded with these knock ports:" << std::endl;
+    std::cout << buffer << std::endl;
+
+    std::cout << "Sending to the server this secret phrase:" << std::endl;
+    std::cout << secretPhrase << std::endl;
+
+    std::string str = std::string(buffer);
+    std::vector<int> knockPorts;
+
+    std::stringstream ss(str);
+
+    for (int i; ss >> i;) {
+        knockPorts.push_back(i);
+        if (ss.peek() == ',') ss.ignore();
+    }
+
+    // std::vector<int> knockPorts = {4015, 4091, 4091, 4091, 4015};
+
+    for (int port : knockPorts) {
+        client.setPort(port);
+        memset(buffer, 0, sizeof(buffer));
+        client.send(secretPhrase.c_str(), secretPhrase.size());
+        client.receive(buffer, bufferSize);
+        std::cout << buffer << std::endl;
+    }
+
+    // client.setPort(4091);
+    // client.send(secretPhrase.c_str(), secretPhrase.size());
+    // client.send(secretPhrase.c_str(), secretPhrase.size());
+    // client.send(secretPhrase.c_str(), secretPhrase.size());
+
+    // client.setPort(4015);
+    // client.send(secretPhrase.c_str(), secretPhrase.size());
+
+    /*
+    memset(buffer, 0, sizeof(buffer));
+    client.receive(buffer, bufferSize);
+    std::cout << "The server responded with (after knocking):\n" << buffer << std::endl;
+    memset(buffer, 0, sizeof(buffer));
+    client.receive(buffer, bufferSize);
+    std::cout << buffer << std::endl;
+
+    client.setPort(4091);
+    memset(buffer, 0, sizeof(buffer));
+    client.receive(buffer, bufferSize);
+    std::cout << buffer << std::endl;
+
+    memset(buffer, 0, sizeof(buffer));
+    client.receive(buffer, bufferSize);
+    std::cout << buffer << std::endl;
+
+    memset(buffer, 0, sizeof(buffer));
+    client.receive(buffer, bufferSize);
+    std::cout << buffer << std::endl;
+    */
+}
+
 void PuzzleSolver::printPuzzlePorts() {
     std::cout << "--------------------------------" << std::endl;
     for (PortMessagePair &puzzle : portMessagePairs) {
@@ -461,6 +563,7 @@ void PuzzleSolver::printPuzzlePorts() {
             std::cout << "Port:\t" << puzzle.port << "unexepected ..." << std::endl;
         }
     }
+
     std::cout << "--------------------------------" << std::endl;
 }
 
@@ -469,10 +572,14 @@ void PuzzleSolver::solvePuzzles() {
         udpPortScanner->getUdpClient()->setPort(portMessagePair.port);
 
         if (portMessagePair.message.find("Send me a message") != std::string::npos) {
-            solveChecksumPort(portMessagePair.port);
+            std::cout << "------ SOLVING CHECKSUM PORT -----" << std::endl;
+            solveChecksumPort(portMessagePair);
         } else if (portMessagePair.message.find("I am the oracle") != std::string::npos) {
-            continue;
+            std::cout << "------ SETTING THE ORACLE PORT -----" << std::endl;
+            std::cout << portMessagePair.message << std::endl;
+            oraclePort = portMessagePair.port;
         } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
+            std::cout << "------ EVIL BIT PORT -----" << std::endl;
             // solveEvilBitPort(portMessagePair);
             continue;
         } else if (portMessagePair.message.find("My boss") != std::string::npos) {
@@ -480,5 +587,17 @@ void PuzzleSolver::solvePuzzles() {
             solveSimplePort(portMessagePair.message);
             std::cout << "--------------------------------" << std::endl;
         }
+    }
+
+    if (secretPhrase.size() != 0 &&
+        secretPorts.size() ==
+            2) {  // change this to secretPorts.size() == 2 but for testing i am brute forceing
+        std::cout << "------ SOLVING ORACLE PORT -----" << std::endl;
+        solveOraclePort();
+    } else {
+        std::cout << "------ WE WERE NOT ABLE TO OBTAIN THE NECCECARY INFORMATION FOR THE ORACLE "
+                     "PORT -----"
+                  << std::endl;
+        std::cout << "Please try to run the program again..." << std::endl;
     }
 }

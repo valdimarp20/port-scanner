@@ -23,11 +23,13 @@ class PuzzleSolver {
         const char *destIpAddress;
         std::vector<PortMessagePair> portMessagePairs;
         std::vector<int> secretPorts;
+        std::string secretPhrase;
         void scanAndSetPorts();
         PortMessagePair scanAndGetPortMessagePair(int port);
 
         std::string getChecksumPortSecret(int port, std::string sourceIpAddress,
                                           std::string checkSum);
+        int oraclePort;
 
     public:
         PuzzleSolver();
@@ -41,7 +43,8 @@ class PuzzleSolver {
 
         void solveSimplePort(std::string simplePortMessage);
         void solveEvilBitPort(PortMessagePair messagePair);
-        void solveChecksumPort(int port);
+        void solveChecksumPort(PortMessagePair messagePair);
+        void solveOraclePort();
         void solvePuzzles();
         void test();
 };
