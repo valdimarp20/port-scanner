@@ -218,8 +218,23 @@ void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
         secretMessage = getChecksumPortSecret(port, sourceIpAddress, checkSum);
 
         int quoteStart = secretMessage.find("\"");
-        secretPhrase =
-            secretMessage.substr(quoteStart + 1, secretMessage.length() - quoteStart - 2);
+
+        std::cout << "------ quoteStart:" << quoteStart << std::endl;
+
+        int beginStringIndex = quoteStart + 1;
+
+        std::string beginString =
+            secretMessage.substr(beginStringIndex, secretMessage.size() - beginStringIndex);
+
+        std::cout << "Beginstring:" << beginString << std::endl;
+
+        int quoteEnd = beginString.find("\"");
+
+        std::string completeSecretString = beginString.substr(0, quoteEnd);
+
+        std::cout << "Complete String:" << completeSecretString << std::endl;
+
+        secretPhrase = completeSecretString;
 
         client.closeSocket();
     } else {
@@ -288,17 +303,39 @@ std::string PuzzleSolver::getChecksumPortSecret(int port, std::string sourceIpAd
 
     iph->ip_sum = htons(::checkSum((unsigned short *)datagram, iph->ip_len));
 
-    // Send the packet as payload
-    try {
-        client.send(datagram, htons(iph->ip_len));
-    } catch (SocketException &exception) {
-        std::cerr << "Failed to send" << std::endl;
-    }
+    int tries = 0;
+    int maxTries = 10;
+    bytesReceived = -1;
 
-    bytesReceived = client.receive(buffer, sizeof(buffer));
+    client.setReceiveTimeout(100);
+
+    while (bytesReceived < 0) {
+        if (tries > maxTries) {
+            std::cout << "Unable to get a response back retreiving the checksum port data (after "
+                         "calculating the checksum)"
+                      << std::endl;
+            break;
+        }
+
+        // Send the packet as payload
+        try {
+            client.send(datagram, htons(iph->ip_len));
+        } catch (SocketException &exception) {
+            std::cerr << "Failed to send" << std::endl;
+        }
+
+        // TODO: Send this in a loop
+
+        bytesReceived = client.receive(buffer, sizeof(buffer));
+
+        tries++;
+    }
     if (bytesReceived > 0) {
         std::cout << buffer << std::endl;
         secretMessage = buffer;
+    } else {
+        std::cout << "Unable to get an answer back, quitting..." << std::endl;
+        exit(1);
     }
 
     return secretMessage;
@@ -518,9 +555,25 @@ void PuzzleSolver::solveOraclePort() {
     for (int port : knockPorts) {
         client.setPort(port);
         memset(buffer, 0, sizeof(buffer));
-        client.send(secretPhrase.c_str(), secretPhrase.size());
-        client.receive(buffer, bufferSize);
-        std::cout << buffer << std::endl;
+
+        int tries = 0;
+        int maxTries = 10;
+        int noResponse = false;
+        int bytesReceived = -1;
+
+        while (bytesReceived < 0) {
+            if (tries >= maxTries) {
+                std::cout << "Unable to get response from port " << port << "... trying next port"
+                          << std::endl;
+                break;
+            }
+
+            client.send(secretPhrase.c_str(), secretPhrase.size());
+            bytesReceived = client.receive(buffer, bufferSize);
+            tries++;
+        }
+
+        if (bytesReceived > 0) std::cout << buffer << std::endl;
     }
 
     // client.setPort(4091);
