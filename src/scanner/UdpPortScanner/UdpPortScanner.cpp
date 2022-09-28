@@ -8,7 +8,6 @@
 UdpPortScanner::UdpPortScanner() {}
 
 UdpPortScanner::UdpPortScanner(UdpClient *client) {
-    std::cout << "initializing udpportscanner" << std::endl;
     this->client = client;
 }
 

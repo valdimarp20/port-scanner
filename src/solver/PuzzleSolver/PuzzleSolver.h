@@ -2,6 +2,7 @@
 #define PUZZLESOLVER_H
 
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "../../scanner/UdpClient/UdpClient.h"
@@ -18,18 +19,20 @@ struct pseudo_header {
 
 class PuzzleSolver {
     private:
-        std::string groupMessage = "$group_6$";
-        UdpPortScanner *udpPortScanner;
         const char *destIpAddress;
+        std::string groupNumber = "$group_6$";
+        UdpPortScanner *udpPortScanner;
         std::vector<PortMessagePair> portMessagePairs;
         std::vector<int> secretPorts;
         std::string secretPhrase;
+        int oraclePort;
         void scanAndSetPorts();
         PortMessagePair scanAndGetPortMessagePair(int port);
 
-        std::string getChecksumPortSecret(int port, std::string sourceIpAddress,
-                                          std::string checkSum);
-        int oraclePort;
+        std::tuple<std::string, std::string> getChecksumPortChecksumAndSourceIpAddress(
+            int checksumPort);
+        std::string getChecksumPortSecret(int checksumPort, std::string checksum,
+                                          std::string sourceIpAddress);
 
     public:
         PuzzleSolver();
@@ -43,7 +46,7 @@ class PuzzleSolver {
 
         void solveSimplePort(std::string simplePortMessage);
         void solveEvilBitPort(PortMessagePair messagePair);
-        void solveChecksumPort(PortMessagePair messagePair);
+        void solveChecksumPort(PortMessagePair checksumPuzzle);
         void solveOraclePort();
         void solvePuzzles();
         void test();

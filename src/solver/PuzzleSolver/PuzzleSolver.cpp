@@ -165,179 +165,206 @@ void PuzzleSolver::solveSimplePort(std::string simplePortMessage) {
     std::cout << "\tDon't tell the boss that we found the secret port: " << secretPort << std::endl;
 }
 
-void PuzzleSolver::solveChecksumPort(PortMessagePair messagePair) {
-    std::cout << "This was the message we got:" << std::endl;
-    std::cout << messagePair.message << std::endl;
-    int port = messagePair.port;
-    char buffer[MAX_BUFFER];
-    int tries = 0, maxTries = 5, bytesReceived;
-    std::string checkSum;
-    std::string sourceIpAddress;
-    std::string messageBuffer;
+/**
+ * Solves the checksum port & gets the secret message.
+ *
+ * @param checksumPort Checksum puzzle port number.
+ */
+void PuzzleSolver::solveChecksumPort(PortMessagePair checksumPuzzle) {
+    std::string completeSecretMessage;
     std::string secretMessage;
+    std::tuple<std::string, std::string> checksumAndSourceIpAddress;
 
-    UdpClient client = UdpClient(destIpAddress, port);
+    std::cout << "Message from checksum port:" << std::endl
+              << checksumPuzzle.message << std::endl
+              << std::endl;
 
-    // Set client receive timeout
-    try {
-        client.setReceiveTimeout(1000);
-    } catch (const SocketException &exception) {
-        std::cerr << "Failed to set timeout" << std::endl;
+    checksumAndSourceIpAddress = getChecksumPortChecksumAndSourceIpAddress(checksumPuzzle.port);
+    if (std::get<0>(checksumAndSourceIpAddress).length() > 0 &&
+        std::get<1>(checksumAndSourceIpAddress).length() > 0) {
+        std::cout << "==> Obtained the checksum '" << std::get<0>(checksumAndSourceIpAddress) << "'"
+                  << std::endl;
+        std::cout << "==> Obtained the source address '" << std::get<1>(checksumAndSourceIpAddress)
+                  << "'" << std::endl;
+
+        secretMessage =
+            getChecksumPortSecret(checksumPuzzle.port, std::get<0>(checksumAndSourceIpAddress),
+                                  std::get<1>(checksumAndSourceIpAddress));
     }
 
-    do {
-        // Send group number
-        try {
-            client.send(groupMessage.c_str(), groupMessage.length());
-        } catch (const SocketException &exception) {
-            std::cerr << "Failed to send" << std::endl;
-        }
-        // Receive message from checksum port
-        bytesReceived = client.receive(buffer, sizeof(buffer));
-        tries++;
-    } while (tries < maxTries && bytesReceived < 0);
+    // Parse secret message
+    int quoteStartPosition = secretMessage.find("\"");
+    int otherQuotePositions = secretMessage.find(".\"");
+    completeSecretMessage =
+        secretMessage.substr(quoteStartPosition + 1, otherQuotePositions - quoteStartPosition);
 
-    // Parse the message
-    if (bytesReceived > 0) {
-        messageBuffer = std::string(buffer);
+    if (secretMessage.find("Congratulations") != std::string::npos) {
+        std::cout << "==> Found secret message " << std::endl << completeSecretMessage << std::endl;
 
-        // Find the checksum hex
-        int checkSumPosition = messageBuffer.find("0x");
-        checkSum = messageBuffer.substr(checkSumPosition + 2, 4);
-
-        // Find the source ip address
-        int ipAdddressPosition = messageBuffer.find("being ");
-        sourceIpAddress = messageBuffer.substr(ipAdddressPosition + 6);
-
-        int exclamationPosition = sourceIpAddress.find("!");
-        sourceIpAddress = sourceIpAddress.substr(0, exclamationPosition);
-
-        std::cout << "Source address to spoof: " << sourceIpAddress << std::endl;
-        std::cout << "Checksum in message:  0x" << checkSum << std::endl;
-
-        secretMessage = getChecksumPortSecret(port, sourceIpAddress, checkSum);
-
-        int quoteStart = secretMessage.find("\"");
-
-        std::cout << "------ quoteStart:" << quoteStart << std::endl;
-
-        int beginStringIndex = quoteStart + 1;
-
-        std::string beginString =
-            secretMessage.substr(beginStringIndex, secretMessage.size() - beginStringIndex);
-
-        std::cout << "Beginstring:" << beginString << std::endl;
-
-        int quoteEnd = beginString.find("\"");
-
-        std::string completeSecretString = beginString.substr(0, quoteEnd);
-
-        std::cout << "Complete String:" << completeSecretString << std::endl;
-
-        secretPhrase = completeSecretString;
-
-        client.closeSocket();
     } else {
-        memset(buffer, 0, sizeof(buffer));
+        std::cout << "==> Found message " << std::endl << secretMessage << std::endl;
     }
+    secretPhrase = completeSecretMessage;
 }
 
-std::string PuzzleSolver::getChecksumPortSecret(int port, std::string sourceIpAddress,
-                                                std::string checkSum) {
-    UdpClient client = UdpClient(destIpAddress, port);
+/**
+ * Get the checksum & source ip address from the checksum puzzle port.
+ *
+ * @param checksumPort Checksum puzzle port number.
+ * @return Tuple containing the obtained checksum & source ip address.
+ */
+std::tuple<std::string, std::string> PuzzleSolver::getChecksumPortChecksumAndSourceIpAddress(
+    int checksumPort) {
+    // Initialize
+    char messageBuffer[MAX_BUFFER];
+    int bytesReceived, exclamationPosition;
+    std::string message;
+    std::string checksum;
+    std::string sourceIpAddress;
+    UdpClient client = UdpClient(destIpAddress, checksumPort);
+    std::tuple<std::string, std::string> checksumAndSourceIpAddress = std::make_tuple("", "");
+
+    // Send group number #6
+    int maxTries = 5;
+    for (int tries = 0; tries < maxTries; tries++) {
+        memset(messageBuffer, 0, sizeof(messageBuffer));  // Clear buffer
+
+        std::cout << "==> Sending group number" << std::endl;
+        bytesReceived =
+            client.sendReceiveWithRetriesAndTimeout(groupNumber.c_str(), groupNumber.length(),
+                                                    messageBuffer, sizeof(messageBuffer), 5, 1000);
+        if (bytesReceived > 0) {
+            message = std::string(messageBuffer);
+            if (message.find("inform your TA") == std::string::npos) {
+                std::cout << "==> Received a valid response" << std::endl;
+                std::cout << message << std::endl << std::endl;
+                break;
+            } else {
+                message = "";
+                std::cout << "==> Received an invalid response" << std::endl;
+                std::cout << "==> Trying again ..." << std::endl;
+            }
+        }
+    }
+
+    // Close client socket
+    try {
+        client.closeSocket();
+    } catch (SocketException &exception) {
+        std::cerr << exception.what() << std::endl;
+    }
+
+    // Parse message
+    if (bytesReceived > 0 && message.length() > 0) {
+        message = std::string(messageBuffer);
+
+        // Get the checksum
+        checksum = message.substr(message.find("0x") + 2, 4);
+
+        // Get the ip address
+        sourceIpAddress = message.substr(message.find("being ") + 6);
+        exclamationPosition = sourceIpAddress.find("!");
+        sourceIpAddress = sourceIpAddress.substr(0, exclamationPosition);
+
+        // Insert checksum & ip address into tuple
+        std::get<0>(checksumAndSourceIpAddress) = checksum;
+        std::get<1>(checksumAndSourceIpAddress) = sourceIpAddress;
+    }
+
+    memset(messageBuffer, 0, sizeof(messageBuffer));  // Clear buffer
+    return checksumAndSourceIpAddress;
+}
+
+/**
+ * Gets the secret message from the checksum puzzle port.
+ *
+ * @param checksumPort Checksum puzzle port number.
+ * @param checksum Checksum obtained from the checksum puzzle port.
+ * @param sourceIpAddress Ip address obtained from the checksum puzzle port.
+ * @return secret message
+ */
+std::string PuzzleSolver::getChecksumPortSecret(int checksumPort, std::string checksum,
+                                                std::string sourceIpAddress) {
+    // Initialize
+    UdpClient client = UdpClient(destIpAddress, checksumPort);
+    char message[MAX_BUFFER];
     std::string *messageBuffer;
     std::string secretMessage;
+    int bytesSent, bytesReceived, checksumSize = 2;
 
-    int bytesSent, bytesReceived, checkSumBytes = 2;  // 2 bytes for the checksum
-    char datagram[4096], buffer[MAX_BUFFER], *pseudogram;
+    // Datagram to represent the packet
+    char datagram[4096], *pseudogram;
+    memset(datagram, 0, sizeof(datagram));  // Zero out packet buffer
 
-    memset(datagram, 0, sizeof(datagram));
+    // IP header
+    struct ip *iph = (struct ip *)datagram;
 
-    struct ip *iph = (struct ip *)datagram;                                 // IP header
-    struct udphdr *udph = (struct udphdr *)(datagram + sizeof(struct ip));  // UDP header
+    // UDP header
+    struct udphdr *udph = (struct udphdr *)(datagram + sizeof(struct ip));
 
+    // Address resolution
     struct sockaddr_in destAddress;
     struct pseudo_header psh;
 
     destAddress.sin_family = AF_INET;
-    destAddress.sin_port = htons(port);
-    destAddress.sin_addr.s_addr = inet_addr(destIpAddress);
+    destAddress.sin_port = htons(checksumPort);
+    int isAddressSet = inet_pton(AF_INET, destIpAddress, &destAddress.sin_addr);
 
-    std::cout << "Filling in the header" << std::endl;
-    // Fill the IP header
+    // Fill in the IP header
     iph->ip_hl = 5;
     iph->ip_v = 4;
     iph->ip_tos = 0;
-
-    iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr) + checkSumBytes);
-    iph->ip_id = htons(54321);  // Packet id
+    iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr) + checksumSize);
+    iph->ip_id = htons(54321);
     iph->ip_off = 0;
     iph->ip_ttl = 255;
     iph->ip_p = IPPROTO_UDP;
     iph->ip_sum = 0;
     iph->ip_src.s_addr = inet_addr(sourceIpAddress.c_str());
     iph->ip_dst.s_addr = destAddress.sin_addr.s_addr;
-    std::cout << "Filled in the header" << std::endl;
 
     // Fill in the UDP header
     udph->uh_sport = htons(RAW_COMMUNICATION_PORT);
-    udph->uh_dport = htons(port);
-    udph->uh_ulen = htons(10);
-    udph->uh_sum = htons((unsigned short)stoul(checkSum, 0, 16));
+    udph->uh_dport = htons(checksumPort);
+    udph->uh_ulen = htons(sizeof(struct udphdr) + checksumSize);
+    udph->uh_sum = htons((unsigned short)stoul(checksum, 0, 16));
 
     // Fill in the pseudo header
     psh.source_address = inet_addr(sourceIpAddress.c_str());
     psh.dest_address = destAddress.sin_addr.s_addr;
     psh.placeholder = 0;
     psh.protocol = IPPROTO_UDP;
-    psh.udp_length = htons(sizeof(struct udphdr) + checkSumBytes);
+    psh.udp_length = htons(sizeof(struct udphdr) + checksumSize);
 
-    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + checkSumBytes;
-    pseudogram = (char *)malloc(psize);
+    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + checksumSize;
+    pseudogram = new char[psize];
+
     memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
-    memcpy(pseudogram + sizeof(struct pseudo_header), udph, sizeof(struct udphdr) + checkSumBytes);
+    memcpy(pseudogram + sizeof(struct pseudo_header), udph, sizeof(struct udphdr) + checksumSize);
 
-    unsigned short initialChecksum = ::checkSum((unsigned short *)pseudogram, psize);
+    unsigned short initialChecksum = checkSum((unsigned short *)pseudogram, psize);
     messageBuffer = (std::string *)(datagram + sizeof(ip) + sizeof(struct udphdr));
-    memcpy(messageBuffer, &initialChecksum, checkSumBytes);
+    memcpy(messageBuffer, &initialChecksum, checksumSize);
 
-    iph->ip_sum = htons(::checkSum((unsigned short *)datagram, iph->ip_len));
+    iph->ip_sum = htons(checkSum((unsigned short *)datagram, iph->ip_len));
 
-    int tries = 0;
-    int maxTries = 10;
-    bytesReceived = -1;
-
-    client.setReceiveTimeout(100);
-
-    while (bytesReceived < 0) {
-        if (tries > maxTries) {
-            std::cout << "Unable to get a response back retreiving the checksum port data (after "
-                         "calculating the checksum)"
-                      << std::endl;
-            break;
-        }
-
-        // Send the packet as payload
-        try {
-            client.send(datagram, htons(iph->ip_len));
-        } catch (SocketException &exception) {
-            std::cerr << "Failed to send" << std::endl;
-        }
-
-        // TODO: Send this in a loop
-
-        bytesReceived = client.receive(buffer, sizeof(buffer));
-
-        tries++;
+    // Send the packet as a payload
+    std::cout << "==> Sending packet in payload" << std::endl;
+    bytesReceived = client.sendReceiveWithRetriesAndTimeout(datagram, htons(iph->ip_len), message,
+                                                            sizeof(message), 5, 1000);
+    // Close client socket
+    try {
+        client.closeSocket();
+    } catch (SocketException &exception) {
+        std::cerr << exception.what() << std::endl;
     }
+
     if (bytesReceived > 0) {
-        std::cout << buffer << std::endl;
-        secretMessage = buffer;
-    } else {
-        std::cout << "Unable to get an answer back, quitting..." << std::endl;
-        exit(1);
+        std::cout << "==> Received a response" << std::endl;
+        std::cout << message << std::endl << std::endl;
+        secretMessage = message;
     }
-
+    delete pseudogram;
     return secretMessage;
 }
 
@@ -609,6 +636,7 @@ void PuzzleSolver::solveOraclePort() {
 
 void PuzzleSolver::printPuzzlePorts() {
     std::cout << "--------------------------------" << std::endl;
+
     for (PortMessagePair &puzzle : portMessagePairs) {
         if (puzzle.message.find("Send me a message") != std::string::npos) {
             std::cout << "Checksum port:\t" << puzzle.port << std::endl;
@@ -627,23 +655,24 @@ void PuzzleSolver::printPuzzlePorts() {
 }
 
 void PuzzleSolver::solvePuzzles() {
-    for (PortMessagePair portMessagePair : portMessagePairs) {
-        udpPortScanner->getUdpClient()->setPort(portMessagePair.port);
+    for (PortMessagePair puzzle : portMessagePairs) {
+        udpPortScanner->getUdpClient()->setPort(puzzle.port);
 
-        if (portMessagePair.message.find("Send me a message") != std::string::npos) {
+        if (puzzle.message.find("Send me a message") != std::string::npos) {
             std::cout << "------ SOLVING CHECKSUM PORT -----" << std::endl;
-            solveChecksumPort(portMessagePair);
-        } else if (portMessagePair.message.find("I am the oracle") != std::string::npos) {
+            solveChecksumPort(puzzle);
+
+        } else if (puzzle.message.find("I am the oracle") != std::string::npos) {
             std::cout << "------ SETTING THE ORACLE PORT -----" << std::endl;
-            std::cout << portMessagePair.message << std::endl;
-            oraclePort = portMessagePair.port;
-        } else if (portMessagePair.message.find("The dark side") != std::string::npos) {
+            std::cout << puzzle.message << std::endl;
+            oraclePort = puzzle.port;
+        } else if (puzzle.message.find("The dark side") != std::string::npos) {
             std::cout << "------ EVIL BIT PORT -----" << std::endl;
-            solveEvilBitPort(portMessagePair);
-            continue;
-        } else if (portMessagePair.message.find("My boss") != std::string::npos) {
+            // solveEvilBitPort(puzzle);
+
+        } else if (puzzle.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
-            solveSimplePort(portMessagePair.message);
+            solveSimplePort(puzzle.message);
             std::cout << "--------------------------------" << std::endl;
         }
     }

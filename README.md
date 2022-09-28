@@ -1,3 +1,5 @@
+Compiled and tested on MacOS
+
 # Scanner Installation
 Use `make` or `make scanner` to compile the application.
 
