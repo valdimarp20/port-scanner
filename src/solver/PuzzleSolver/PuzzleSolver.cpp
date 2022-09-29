@@ -15,7 +15,7 @@
 #include "../../shared/SocketException.h"
 
 #define MAX_BUFFER 4096
-#define RAW_COMMUNICATION_PORT 45000
+#define RAW_COMMUNICATION_PORT 45001
 
 unsigned short checkSum(unsigned short *ptr, int nbytes) {
     long sum;
