@@ -668,7 +668,7 @@ void PuzzleSolver::solvePuzzles() {
             oraclePort = puzzle.port;
         } else if (puzzle.message.find("The dark side") != std::string::npos) {
             std::cout << "------ EVIL BIT PORT -----" << std::endl;
-            // solveEvilBitPort(puzzle);
+            solveEvilBitPort(puzzle);
 
         } else if (puzzle.message.find("My boss") != std::string::npos) {
             std::cout << "------ SOLVING SIMPLE PORT -----" << std::endl;
