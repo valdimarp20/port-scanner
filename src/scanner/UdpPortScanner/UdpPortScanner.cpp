@@ -30,6 +30,13 @@ void UdpPortScanner::displayOpenPorts() {
     }
 }
 
+/**
+ * Scan all ports in a given range.
+ *
+ * @param lowPort Starting port.
+ * @param highPort Ending port.
+ * @param tryAmount Amount of times to try scan each port.
+ */
 void UdpPortScanner::scanPortRange(int lowPort, int highPort, int tryAmount) {
     openPorts.clear();
 
@@ -42,6 +49,13 @@ void UdpPortScanner::scanPortRange(int lowPort, int highPort, int tryAmount) {
     }
 }
 
+/**
+ * Check whether a given udp port is open.
+ *
+ * @param port Port to check.
+ * @param tryAmount Number of tries to check the port.
+ * @return True if the port is open, false otherwise.
+ */
 bool UdpPortScanner::isPortOpen(int port, int tryAmount) {
     return scanPort(port, tryAmount) == client->getAddressPort();
 }
@@ -68,10 +82,20 @@ int UdpPortScanner::scanPort(int port, int tryAmount) {
     return -1;
 }
 
+/**
+ * Get the open ports found from the scan results.
+ *
+ * @return A vector of open ports found from the scan results.
+ */
 std::vector<int> &UdpPortScanner::getOpenPorts() {
     return this->openPorts;
 }
 
+/**
+ * Set the open ports.
+ *
+ * @param ports Vector of port numbers.
+ */
 void UdpPortScanner::setOpenPorts(std::vector<int> ports) {
     this->openPorts = ports;
 }
