@@ -11,7 +11,9 @@ UdpPortScanner::UdpPortScanner(UdpClient *client) {
     this->client = client;
 }
 
-UdpPortScanner::~UdpPortScanner() {}
+UdpPortScanner::~UdpPortScanner() {
+    client->closeSocket();
+}
 
 UdpClient *UdpPortScanner::getUdpClient() {
     return client;
@@ -28,51 +30,42 @@ void UdpPortScanner::displayOpenPorts() {
     }
 }
 
-int UdpPortScanner::sendReceiveWithTries(int maxTries) {
-    char buffer[1024];
-    int tries = 0;
-    int bytesReceived = -1;
+void UdpPortScanner::scanPortRange(int lowPort, int highPort, int tryAmount) {
+    openPorts.clear();
 
-    // Try to send & receive until max tries have been reached,
-    // Or a the client receives data from the destination
-    while (tries < maxTries && bytesReceived < 0) {
-        try {
-            client->send(NULL, 0);
-        } catch (SocketException &exception) {
-            break;
+    for (int port = lowPort; port <= highPort; port++) {
+        std::cout << "==> Scanning port '" << port << "' ..." << std::endl;
+        if (isPortOpen(port, tryAmount)) {
+            std::cout << "==> port " << port << "' is open !" << std::endl;
+            openPorts.push_back(port);
         }
-        bytesReceived = client->receive(buffer, sizeof(buffer));
-        tries++;
     }
-
-    if (bytesReceived >= 0) {
-        std::cout << "Received from " << client->getAddressPort() << " : " << buffer << std::endl;
-        memset(buffer, 0, sizeof(buffer));
-    }
-    std::cout << "TRIED '" << tries << "' times for port " << client->getAddressPort() << std::endl;
-    return bytesReceived;
 }
 
 bool UdpPortScanner::isPortOpen(int port, int tryAmount) {
-    return scanPort(port, tryAmount) && port == client->getAddressPort();
+    return scanPort(port, tryAmount) == client->getAddressPort();
 }
 
-bool UdpPortScanner::scanPort(int port, int tryAmount) {
+/**
+ * Check whether a given udp port is open.
+ *
+ * @param port Port to scan.
+ * @param tryAmount Number of tries to scan the port.
+ * @return port number if port is open, -1 otherwise.
+ */
+int UdpPortScanner::scanPort(int port, int tryAmount) {
+    char buffer[1024];
     client->setPort(port);
-    int bytesReceived = sendReceiveWithTries(tryAmount);
 
-    return bytesReceived >= 0;
-}
+    // Send & receive
+    int bytesReceived =
+        client->sendReceiveWithRetriesAndTimeout(NULL, 0, buffer, sizeof(buffer), tryAmount, 50);
 
-void UdpPortScanner::scanPortRange(int lowPort, int highPort, int tryAmount) {
-    std::cout << "Scanning ..." << std::endl;
-
-    openPorts.clear();
-    for (int currentPort = lowPort; currentPort <= highPort; currentPort++) {
-        if (isPortOpen(currentPort, tryAmount)) {
-            openPorts.push_back(currentPort);
-        }
+    // Return the port if successful.
+    if (bytesReceived >= 0) {
+        return port;
     }
+    return -1;
 }
 
 std::vector<int> &UdpPortScanner::getOpenPorts() {
