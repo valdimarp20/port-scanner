@@ -2,7 +2,7 @@
 
 #include <arpa/inet.h>
 #include <unistd.h>
-
+#include <cstring>
 #include <iostream>
 
 #include "../../shared/SocketException.h"
